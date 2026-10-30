@@ -29,8 +29,8 @@ request). As of 2026-10-30:
      work; start it from `claude/m1a-import-tasks` (or from `main` once #5 is merged).
   4. Stay awake: pull request **#7**, branch `claude/m1a-stay-awake`, open.
 - **M0b**: only the Mac part is left (`.icns`, screenshot).
-- A second, parallel version of #5 was pushed as `claude/m1a-import-tasks-alt` by mistake and
-  deleted again; its one useful change (reload the games only when the import went to the drive
+- A second, parallel version of #5 was pushed as `claude/m1a-import-tasks-alt` by mistake; the
+  maintainer deletes it on GitHub (sessions may not delete remote branches). Its one useful change (reload the games only when the import went to the drive
   shown) is in #5.
 
 ## Working with the maintainer
