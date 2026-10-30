@@ -92,8 +92,11 @@ The fork still shows TinyWiiBackupManager's icon (Wiimote, "TWBM") and screensho
 1. **Core** (`claude/m1a-task-core`): `src/tasks/` without iced – tasks with resources and one
    queue per resource, progress with speed and time left, cancel and pause (`TaskControl`),
    retry, reordering, history. Tested, not used by the UI yet.
-2. **Import as tasks**: the import queue becomes tasks, with progress bars and the bar at the
-   bottom of every page; replaces `LongOperationKind::Import`.
+2. **Import as tasks** (`claude/m1a-import-tasks`, cloud session 2026-10-30): the import queue
+   becomes tasks, with progress bars and the bar at the bottom of every page; replaces
+   `LongOperationKind::Import`. Imports start when added (no "Start importing" any more); pause,
+   cancel (removes what was written) and retry per task; the Tasks page already lists every
+   task and the history. Still to try on the Mac with real games (test log).
 3. **Convert, export, scrub, checksums as tasks**, then `LongOperations` is removed; the task
    manager page with pause, cancel, retry, reorder and the history; unfinished tasks after a restart.
 4. **Stay awake** while a task is running (macOS, Windows, Linux).
