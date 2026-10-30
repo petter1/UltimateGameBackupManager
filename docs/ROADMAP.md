@@ -17,6 +17,23 @@ Done and tried on real hardware (the 3DS "petter1", the iCloud collection and th
 - **[Test log](TESTLOG.md)**: every test on real hardware is written down there – device, what,
   who, when, how, why and the result. From now on each milestone counts as done only with an entry.
 
+## Waiting for the Mac
+
+What cloud sessions can't do: real drives, consoles, the macOS build and its look. In this order;
+each item is ticked off here (and gets its test log entry) when done.
+
+1. **M1a, import as tasks** (pull request #5, branch `claude/m1a-import-tasks`): check out the
+   branch, `cargo run`, import a few Wii and GameCube games to WiiGames (a FAT32 drive, so Wii
+   games are split). Watch the progress bar on the Tasks page and the bar at the bottom of other
+   pages; pause and resume one; cancel one and check that its folder in `wbfs/` or `games/` is
+   gone; import two discs of one GameCube game and cancel the second (the first must stay);
+   retry a cancelled one. Also try a read-only drive (the NTFS one): one clear message, no task.
+   Then a test log entry, and merge #5.
+2. **M0b, own face** (see M0b below): `just icons` for the `.icns`, the new screenshot, the icon
+   in the Dock, Finder, ⌘-Tab and at 16 px; test log entry; M0b done.
+3. **Every later M1a pull request**: try it on the Mac before merging (the stay-awake one with a
+   long import and the Mac left alone until it would sleep).
+
 ## How the app is meant to work
 
 - **Library and devices are separate.** ROM sources are folders on the computer; devices are
