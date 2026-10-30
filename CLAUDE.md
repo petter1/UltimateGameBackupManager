@@ -14,6 +14,14 @@ what already exists, so no work is done twice:
    don't start anew.
 3. Read the code the change touches before planning it.
 
+## What cloud sessions can't do
+
+- **Delete remote branches or force-push**: the cloud environment (claude.ai/code) refuses
+  `git push --delete` and `git push --force-with-lease` as destructive. So: never push something
+  that would need to be undone that way, and use a new commit instead of amending a pushed one.
+  A branch that has to go is deleted by the maintainer on GitHub, or by a Claude Desktop session
+  on the Mac, which can probably do it (not tried yet).
+
 ## Current state
 
 Handover between sessions; the session that changes the state updates this section (in its pull
