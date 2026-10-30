@@ -279,11 +279,17 @@ impl AppState {
                     }
                 }
 
-                Task::batch([
-                    self.start_ready_tasks(),
-                    self.get_games_task(),
-                    self.get_drive_info_task(),
-                ])
+                // only the drive shown needs reloading, and only if the game went there
+                let refresh = match self.jobs.get(&id) {
+                    Some(Job::Import { config, .. })
+                        if config.mount_point() == self.config.mount_point() =>
+                    {
+                        Task::batch([self.get_games_task(), self.get_drive_info_task()])
+                    }
+                    _ => Task::none(),
+                };
+
+                Task::batch([self.start_ready_tasks(), refresh])
             }
             Message::CancelTask(id) => {
                 self.tasks.cancel(id);
