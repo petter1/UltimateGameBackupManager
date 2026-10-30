@@ -10,11 +10,12 @@
 > [!IMPORTANT]
 > **This is a fork of [TinyWiiBackupManager](https://github.com/mq1/TinyWiiBackupManager) by
 > [Manuel Quarneti (mq1)](https://github.com/mq1).** Everything that works today – the UI,
-> the Wii and GameCube game management, the Open Shop Channel, Wiiload – is mq1's work.
+> the Wii and GameCube game management, the [Open Shop Channel](https://oscwii.org),
+> [Wiiload](https://wiibrew.org/wiki/Wiiload) – is mq1's work.
 > Please don't report bugs of this fork to TinyWiiBackupManager.
 
 > [!NOTE]
-> **This fork is written with AI.** Its code, docs and commits are produced by Claude (Anthropic)
+> **This fork is written with AI.** Its code, docs and commits are produced by [Claude](https://claude.ai) ([Anthropic](https://www.anthropic.com))
 > together with a human who decides what gets built, tests it on real consoles and owns the result.
 > See [AI_POLICY.md](AI_POLICY.md).
 
@@ -41,12 +42,14 @@ about who writes the code, and it takes that very seriously.)*
 
 Everything TinyWiiBackupManager does:
 
-- **Lightweight & fast**: native app written in Rust and Iced, no Electron
+- **Lightweight & fast**: native app written in [Rust](https://www.rust-lang.org) and [Iced](https://iced.rs), no
+  [Electron](https://www.electronjs.org)
 - **Platforms**: Windows XP+, macOS 10.12+, Linux ~2014+ (x86, x64, arm64)
 - **Wii and GameCube games**: .iso, .rvz and more thanks to [NOD](https://github.com/encounter/nod),
   .wbfs splitting, update partition stripping, RVZ archiving, integrity checks
-- **GameTDB** covers and `wiitdb.xml`, **TxtCodes** cheat codes
-- **Wii homebrew**: manage apps, download from the Open Shop Channel, send with Wiiload
+- **[GameTDB](https://www.gametdb.com)** covers and `wiitdb.xml`, **TxtCodes** cheat codes
+- **Wii homebrew**: manage apps, download from the [Open Shop Channel](https://oscwii.org), send with
+  [Wiiload](https://wiibrew.org/wiki/Wiiload)
 
 ## :jigsaw: Injects
 
@@ -99,7 +102,10 @@ Thanks as well to:
 - [Luke Street (encounter)](https://github.com/encounter) for [NOD](https://github.com/encounter/nod)
 - [blackb0x](https://github.com/wiidev) for the feedback and advice that shaped TWBM
 - [GameTDB](https://www.gametdb.com), the [Open Shop Channel](https://oscwii.org) and the
-  cheat code archives TWBM uses
+  cheat code archives TWBM uses: [GeckoArchive](https://github.com/mq1/GeckoArchive),
+  [GameHacking.org](https://gamehacking.org) and [RiiConnect24](https://rc24.xyz)
+- [Rust](https://www.rust-lang.org), [Iced](https://iced.rs) and
+  [Lucide](https://lucide.dev) (icons), which the app is built with
 - for the 3DS work coming over from vcinject: [3dbrew](https://www.3dbrew.org),
   [devkitPro](https://devkitpro.org), [Luma3DS](https://github.com/LumaTeam/Luma3DS),
   [Universal-Team](https://github.com/Universal-Team) and the rest of the
@@ -115,7 +121,8 @@ who built the foundation: star and support [TinyWiiBackupManager](https://github
 
 ## :balance_scale: License
 
-[GPL-3.0-only](COPYING), like TinyWiiBackupManager. Code taken over from vcinject (MIT) keeps its
+[GPL-3.0-only](COPYING), like TinyWiiBackupManager. Code taken over from
+[vcinject](https://github.com/petter1/vcinject) (MIT) keeps its
 copyright notice.
 
 <br>
