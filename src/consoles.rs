@@ -208,10 +208,11 @@ impl ConsolesState {
             .collect();
     }
 
-    /// Takes the result of a search: answering consoles are online, the others offline
-    pub fn merge(&mut self, found: Vec<Found>) {
+    /// Takes the result of a search: answering consoles are online, the others offline,
+    /// except `busy` ones, which may not answer while they work on a task
+    pub fn merge(&mut self, found: Vec<Found>, busy: &[SocketAddr]) {
         for entry in &mut self.entries {
-            entry.online = false;
+            entry.online = busy.contains(&entry.addr);
         }
 
         for found in found {
@@ -225,6 +226,15 @@ impl ConsolesState {
 
         self.entries
             .sort_by(|a, b| b.online.cmp(&a.online).then(a.label.cmp(&b.label)));
+
+        // what is on a console may change while it is away
+        let offline = self
+            .entries
+            .iter()
+            .filter(|entry| !entry.online)
+            .map(|entry| entry.addr)
+            .collect::<Vec<_>>();
+        self.titles.retain(|addr, _| !offline.contains(addr));
     }
 }
 
@@ -244,6 +254,15 @@ pub async fn save(data_dir: &Path, entries: Vec<ConsoleEntry>) -> Result<()> {
     let contents = serde_json::to_string_pretty(&entries)?;
     fs::write(path(data_dir), contents).await?;
     Ok(())
+}
+
+/// A quick look for consoles that came or went, without scanning every address
+pub async fn watch(known: Vec<IpAddr>) -> Result<Vec<Found>, String> {
+    smol::unblock(move || {
+        discovery::discover(DISCOVERY_TIMEOUT, &known, PORT)
+            .map_err(|e| format!("Searching for consoles failed: {e}"))
+    })
+    .await
 }
 
 /// Asks the network; when nobody answers, tries every address of the /24
@@ -390,19 +409,40 @@ mod tests {
     #[test]
     fn merge_recognises_a_console_under_a_new_address() {
         let mut state = ConsolesState::default();
-        state.merge(vec![
-            found("10.0.0.2", "id=AB\nname=Petter\nmodel=1"),
-            found("10.0.0.3", "console=wii"),
-        ]);
+        state.merge(
+            vec![
+                found("10.0.0.2", "id=AB\nname=Petter\nmodel=1"),
+                found("10.0.0.3", "console=wii"),
+            ],
+            &[],
+        );
         assert_eq!(state.entries[0].label, "Petter (3DS XL)");
 
-        state.merge(vec![found("10.0.0.9", "id=AB\nname=Petter\nmodel=1")]);
+        state.merge(vec![found("10.0.0.9", "id=AB\nname=Petter\nmodel=1")], &[]);
 
         assert_eq!(state.entries.len(), 2);
         assert!(state.entries[0].online);
         assert_eq!(state.entries[0].addr.ip().to_string(), "10.0.0.9");
         assert!(!state.entries[1].online);
         assert_eq!(state.entries[1].label, "Wii at 10.0.0.3");
+    }
+
+    #[test]
+    fn a_busy_console_stays_online_and_an_absent_one_loses_its_titles() {
+        let mut state = ConsolesState::default();
+        let petter = found("10.0.0.2", "id=AB\nname=Petter\nmodel=1");
+        let addr = petter.addr;
+        state.merge(vec![petter], &[]);
+        state.titles.insert(addr, TitlesState::Loading);
+
+        // installing: vcinject Link doesn't answer the search
+        state.merge(Vec::new(), &[addr]);
+        assert!(state.entries[0].online);
+        assert!(state.titles.contains_key(&addr));
+
+        state.merge(Vec::new(), &[]);
+        assert!(!state.entries[0].online);
+        assert!(!state.titles.contains_key(&addr));
     }
 
     #[test]

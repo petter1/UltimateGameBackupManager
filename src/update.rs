@@ -513,6 +513,15 @@ impl AppState {
                     self.load_drives_task(),
                 ])
             }
+            Message::WatchConsoles => {
+                if self.consoles.searching {
+                    return Task::none();
+                }
+                Task::perform(
+                    consoles::watch(self.consoles.known_addresses()),
+                    Message::GotConsoles,
+                )
+            }
             Message::GotDrives(drives) => {
                 self.consoles.drives = drives;
                 Task::none()
@@ -542,12 +551,8 @@ impl AppState {
 
                 match result {
                     Ok(found) => {
-                        self.consoles.merge(found);
-                        let titles = if self.current_page == Page::Library {
-                            self.load_missing_titles_task()
-                        } else {
-                            Task::none()
-                        };
+                        self.consoles.merge(found, &self.busy_consoles());
+                        let titles = self.load_missing_titles_task();
                         let data_dir = self.data_dir;
                         let entries = self.consoles.entries.clone();
                         Task::batch([

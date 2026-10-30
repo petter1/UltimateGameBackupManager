@@ -84,6 +84,7 @@ pub enum Message {
     GotUpdate(Version),
     GotKnownConsoles(Vec<ConsoleEntry>),
     SearchConsoles,
+    WatchConsoles,
     GotConsoles(Result<Vec<Found>, String>),
     OpenConsole(SocketAddr),
     LoadConsoleTitles(SocketAddr),
