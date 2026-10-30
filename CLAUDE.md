@@ -1,7 +1,7 @@
 # Notes for Claude
 
 Read by every Claude Code session in this repository. The maintainer writes in German; answer in
-German, keep code, commits and docs in English.
+German and address them informally ("du"), keep code, commits and docs in English.
 
 ## Before starting any work
 
@@ -24,8 +24,9 @@ what already exists, so no work is done twice:
 
 ## Current state
 
-Handover between sessions; the session that changes the state updates this section (in its pull
-request). As of 2026-10-30:
+Handover between sessions; the session that changes the state updates this section. New sessions
+start from `main` and only see what is there, so the update goes to `main` in its own small
+`docs/` pull request (merged right away), not only in the feature branch. As of 2026-10-30:
 
 - **M1a, task manager** (see the roadmap):
   1. Core: merged (#4).
