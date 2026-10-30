@@ -102,7 +102,7 @@ impl Link {
         location: u8,
         package: impl Read,
         size: u64,
-        on_progress: impl FnMut(u64),
+        on_progress: impl FnMut(u64) -> io::Result<()>,
     ) -> Result<()> {
         let length = u32::try_from(size + 1).context("The package is larger than 4 GiB")?;
         let mut header = command::INSTALL_LEGACY.to_le_bytes().to_vec();
@@ -118,7 +118,7 @@ impl Link {
         location: u8,
         package: impl Read,
         size: u64,
-        on_progress: impl FnMut(u64),
+        on_progress: impl FnMut(u64) -> io::Result<()>,
     ) -> Result<()> {
         let mut params = vec![location];
         params.extend_from_slice(&size.to_le_bytes());
@@ -135,7 +135,8 @@ impl Link {
         header: &[u8],
         mut data: impl Read,
         size: u64,
-        mut on_progress: impl FnMut(u64),
+        // failing stops the stream, e.g. when the user cancels
+        mut on_progress: impl FnMut(u64) -> io::Result<()>,
         what: &str,
     ) -> Result<()> {
         let result = (|| {
@@ -150,7 +151,7 @@ impl Link {
                 }
                 self.stream.write_all(&buf[..n])?;
                 sent += n as u64;
-                on_progress(sent);
+                on_progress(sent)?;
             }
 
             self.stream.set_read_timeout(Some(INSTALL_TIMEOUT))?;
@@ -270,8 +271,11 @@ mod tests {
         link.note("hello").unwrap();
         let cia = [1, 2, 3];
         let mut progress = Vec::new();
-        link.install_legacy(n3ds::LOCATION_SD, &cia[..], 3, |sent| progress.push(sent))
-            .unwrap();
+        link.install_legacy(n3ds::LOCATION_SD, &cia[..], 3, |sent| {
+            progress.push(sent);
+            Ok(())
+        })
+        .unwrap();
         assert_eq!(progress, vec![3]);
 
         let error = link.progress(1, 2, "x").unwrap_err().to_string();

@@ -7,14 +7,15 @@ use crate::{
     link::{
         client::Link,
         discovery::{self, Found},
-        protocol::{Console, Info, PORT, Title, n3ds},
+        protocol::{Console, Info, PORT, Title, command, n3ds},
     },
     n3ds::smdh,
+    tasks::{self, TaskControl, WorkerEvent},
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 use iced::widget::image;
 use serde::{Deserialize, Serialize};
-use smol::fs;
+use smol::{fs, stream::Stream};
 use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
@@ -337,6 +338,42 @@ fn installed_title(title: Title, smdh: Option<&[u8]>) -> InstalledTitle {
         publisher,
         icon,
     }
+}
+
+/// Installs a CIA on a 3DS as a task: progress in bytes, pause and cancel through `control`.
+pub fn install_cia(
+    cia: PathBuf,
+    name: String,
+    addr: SocketAddr,
+    control: TaskControl,
+) -> impl Stream<Item = WorkerEvent> {
+    tasks::spawn_blocking(move |reporter| {
+        let result = (|| -> Result<()> {
+            let mut link = Link::connect(addr)?;
+            let info = link.info()?;
+
+            let file = std::fs::File::open(&cia)
+                .with_context(|| format!("Could not open {}", cia.display()))?;
+            let size = file.metadata()?.len();
+            let reader = std::io::BufReader::new(file);
+
+            let message = format!("Installing {name}");
+            let on_progress = |sent| {
+                control.checkpoint().map_err(std::io::Error::other)?;
+                reporter.progress(sent, Some(size), || message.clone());
+                Ok(())
+            };
+            if info.supports(command::INSTALL_STREAM) {
+                link.install_stream(n3ds::LOCATION_SD, reader, size, on_progress)
+            } else {
+                link.install_legacy(n3ds::LOCATION_SD, reader, size, on_progress)
+            }
+        })();
+
+        result
+            .map(|()| format!("Installed {name}"))
+            .map_err(|e| e.to_string())
+    })
 }
 
 #[cfg(test)]

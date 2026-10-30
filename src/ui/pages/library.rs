@@ -3,6 +3,7 @@
 
 use crate::{
     library::{ItemId, ItemKind, LibraryItem, Platform},
+    link::protocol::Console,
     message::Message,
     state::AppState,
     ui::components::{
@@ -192,6 +193,26 @@ fn presence(item: &LibraryItem, state: &AppState) -> Vec<String> {
     }
 }
 
+/// One button per online 3DS
+fn install_buttons<'a>(item: &'a LibraryItem, state: &'a AppState) -> Element<'a, Message> {
+    state
+        .consoles
+        .entries
+        .iter()
+        .filter(|entry| entry.online && entry.info.console() == Some(Console::N3ds))
+        .map(|entry| {
+            Element::from(
+                my_button::<Message>()
+                    .icon(Icon::Download)
+                    .label(&entry.label)
+                    .on_press(Message::InstallOnConsole(item.path.clone(), entry.addr)),
+            )
+        })
+        .collect::<Row<'_, _>>()
+        .spacing(5)
+        .into()
+}
+
 fn item_row<'a>(item: &'a LibraryItem, state: &'a AppState) -> Element<'a, Message> {
     let icon: Element<'_, Message> = match &item.icon {
         Some(handle) => image(handle).width(48).height(48).into(),
@@ -238,6 +259,7 @@ fn item_row<'a>(item: &'a LibraryItem, state: &'a AppState) -> Element<'a, Messa
                 .label("Copy to drive")
                 .on_press(Message::CopyToDrive(item.path.clone()))
                 .into(),
+            (ItemKind::Cia, _) => install_buttons(item, state),
             _ => space().into(),
         }
     } else {

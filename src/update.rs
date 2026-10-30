@@ -280,7 +280,16 @@ impl AppState {
                     _ => Task::none(),
                 };
 
-                Task::batch([self.start_ready_tasks(), refresh])
+                let cancelled = self
+                    .tasks
+                    .get(id)
+                    .is_some_and(|task| *task.state() == TaskState::Cancelled);
+                let titles = match self.jobs.get(&id).and_then(Job::changes_titles_on) {
+                    Some(addr) if !cancelled => self.update(Message::LoadConsoleTitles(addr)),
+                    _ => Task::none(),
+                };
+
+                Task::batch([self.start_ready_tasks(), refresh, titles])
             }
             Message::CancelTask(id) => {
                 self.tasks.cancel(id);
@@ -641,6 +650,30 @@ impl AppState {
                     Ok(entry) => Message::PickedGames(vec![entry]),
                     Err(e) => Message::Notify(e.into()),
                 })
+            }
+            Message::InstallOnConsole(cia, addr) => {
+                let Some(entry) = self
+                    .consoles
+                    .entries
+                    .iter()
+                    .find(|entry| entry.addr == addr)
+                else {
+                    return Task::none();
+                };
+                let name = self
+                    .library
+                    .items
+                    .iter()
+                    .find(|item| item.path == cia)
+                    .map_or_else(|| cia.display().to_string(), |item| item.name.clone());
+
+                self.add_job(Job::Install {
+                    cia,
+                    name,
+                    addr,
+                    console: entry.label.clone(),
+                });
+                self.start_ready_tasks()
             }
             Message::GotUpdate(new_version) => {
                 self.new_version = Some(new_version);
