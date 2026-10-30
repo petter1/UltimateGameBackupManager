@@ -571,9 +571,18 @@ impl AppState {
                 self.update(Message::LoadConsoleTitles(addr))
             }
             Message::LoadConsoleTitles(addr) => {
-                self.consoles
-                    .titles
-                    .insert(addr, consoles::TitlesState::Loading);
+                if !self.consoles.reading.insert(addr) {
+                    return Task::none();
+                }
+                // remembered titles stay visible while they are read again
+                if !matches!(
+                    self.consoles.titles.get(&addr),
+                    Some(consoles::TitlesState::Loaded(_))
+                ) {
+                    self.consoles
+                        .titles
+                        .insert(addr, consoles::TitlesState::Loading);
+                }
                 Task::perform(consoles::load_titles(self.data_dir, addr), move |res| {
                     Message::GotConsoleTitles(addr, res)
                 })
@@ -583,12 +592,12 @@ impl AppState {
                 Task::none()
             }
             Message::GotConsoleTitles(addr, result) => {
-                let titles = match result {
-                    Ok(titles) => consoles::TitlesState::Loaded(titles),
-                    Err(e) => consoles::TitlesState::Failed(e),
-                };
-                self.consoles.titles.insert(addr, titles);
-                Task::none()
+                self.consoles.set_titles(addr, result);
+                let entries = self.consoles.entries.clone();
+                Task::perform(consoles::save(self.data_dir, entries), |res| match res {
+                    Ok(()) => Message::NoOp,
+                    Err(e) => Message::Notify(e.into()),
+                })
             }
             Message::ScanLibrary => {
                 self.library.scanning = true;
