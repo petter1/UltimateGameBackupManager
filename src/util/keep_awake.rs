@@ -116,7 +116,10 @@ mod platform {
     }
 }
 
+// Unsafe like the one in main.rs: one Win32 call with plain flags, which no dependency offers
+// (winsafe doesn't wrap it); a crate for it would pull in the `windows` crate.
 #[cfg(target_os = "windows")]
+#[allow(unsafe_code)]
 mod platform {
     use std::io;
 
