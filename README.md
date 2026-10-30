@@ -48,20 +48,29 @@ Everything TinyWiiBackupManager does:
 - **GameTDB** covers and `wiitdb.xml`, **TxtCodes** cheat codes
 - **Wii homebrew**: manage apps, download from the Open Shop Channel, send with Wiiload
 
+## :jigsaw: Injects
+
+An *inject* is an older game packed so that a newer console runs it as its own title, through
+the console's Virtual Console emulator: a GBA game on the 3DS HOME Menu, an N64 game on the Wii U.
+
+- **Planned**: 3DS – GBA, NES, SNES, Game Boy; Wii U – N64, DS, GBA, SNES, NES, GameCube, Wii.
+- **Identified by content**: the app finds the ROM or disc inside an inject and identifies it by
+  its checksum, so an inject is recognised as the game it contains, whatever its file is called.
+- **One entry per game**: the ROM and every inject made from it are one entry in the library,
+  which shows the consoles the game can be installed on ("installable on").
+- **Building them**: 3DS injects first through [vcinject](https://github.com/petter1/vcinject),
+  later ported to Rust; Wii U injects modelled on
+  [UWUVCI](https://github.com/stuff-by-3-random-dudes/UWUVCI-AIO-WPF).
+- **Nothing is shipped**: no console keys, no ROMs, no firmware. Keys a console needs (e.g. the
+  Wii U common key) are entered by you, once, and stay on your computer.
+
 ## :world_map: Roadmap
 
 Every console becomes a module with the same building blocks: games, homebrew, an injector and a
-companion app that lets this app manage the console over Wi-Fi.
-
-| Phase | Console | What | Status |
-| --- | --- | --- | --- |
-| 0 | – | fork, rename, credits, CI, one [Link protocol](docs/LINK_PROTOCOL.md) for all companion apps | in progress |
-| 1 | 3DS | vcinject Link client: discovery, titles, Wi-Fi install, status and updates, Universal-DB, saves, HOME Menu; Virtual Console injector | planned |
-| 2 | Wii | companion app: title list, WAD install, saves (Wiiload already works) | planned |
-| 3 | Wii U | Aroma companion app with WUP-Installer-style installs, title list, saves; injector | planned |
-
-The sidebar will be organised by job – **Games**, **My Consoles**, **Homebrew**, **Setup** – with
-consoles as chips inside each section, so it scales past three consoles.
+companion app that lets this app manage the console over Wi-Fi. Next up are a task manager with
+progress bars, installing on the 3DS over Wi-Fi and preparing SD cards and drives; after that game
+databases, injects, missing games and collections, the Wii and the Wii U, and a server version
+for a NAS. The milestones, in order: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## :arrow_down: Downloads
 
