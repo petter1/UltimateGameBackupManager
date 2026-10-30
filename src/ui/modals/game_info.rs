@@ -3,9 +3,7 @@
 
 use crate::{
     games::game::Game,
-    long_operation::LongOperationKind,
     message::Message,
-    state::AppState,
     ui::components::{
         my_button::{MyButtonKind, my_button},
         my_card::my_card,
@@ -25,7 +23,6 @@ pub fn game_info<'a>(
     game: &'a Game,
     disc_info: Option<&'a wii_disc_info::Meta>,
     scrubbable: bool,
-    state: &'a AppState,
 ) -> Element<'a, Message> {
     let content: Element<'a, _> = if let Some(disc_info) = disc_info {
         row![
@@ -73,14 +70,11 @@ pub fn game_info<'a>(
     };
 
     let scrub_btn = scrubbable.then(|| {
-        let mut btn = my_button()
+        let btn = my_button()
             .label("Scrub")
             .icon(Icon::Shredder)
-            .kind(MyButtonKind::Secondary);
-
-        if state.long_operations.is_idle(LongOperationKind::Scrub) {
-            btn = btn.on_press_with(|| Message::AskConfirmScrub(game.clone()));
-        }
+            .kind(MyButtonKind::Secondary)
+            .on_press_with(|| Message::AskConfirmScrub(game.clone()));
 
         tooltip(
             btn,

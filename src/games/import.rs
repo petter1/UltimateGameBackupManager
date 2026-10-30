@@ -7,7 +7,7 @@ use crate::{
         ImportEntry,
         disc_reader::{SharedMultiFileReader, retrieve_multi_disc_files},
     },
-    long_operation::LongOperationState,
+    tasks::worker::{self, Control, Event, Reporter},
     util::{drive_state::DriveState, misc::OPTIMAL_THREADS},
 };
 use anyhow::{Context, Result, anyhow};
@@ -22,7 +22,7 @@ use std::{
     ffi::OsStr,
     io::{Read, Write},
     num::NonZeroUsize,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 use which_fs::FsKind;
 use wii_disc_info::game_id::GameID;
@@ -33,7 +33,7 @@ fn perform_blocking(
     entry: &ImportEntry,
     config: &Config,
     drive: &DriveState,
-    tx: &smol::channel::Sender<LongOperationState>,
+    reporter: &mut Reporter,
 ) -> Result<()> {
     let filename = entry
         .path()
@@ -41,9 +41,7 @@ fn perform_blocking(
         .and_then(OsStr::to_str)
         .context("invalid filename")?;
 
-    tx.send_blocking(LongOperationState::Progress(format!(
-        "›  Opening {filename}"
-    )))?;
+    reporter.step(format!("Opening {filename}"));
 
     let mut files = retrieve_multi_disc_files(entry.path())?;
 
@@ -56,18 +54,9 @@ fn perform_blocking(
     let must_split = entry.meta().is_wii() && (is_fat32 || config.always_split());
     let split_size = must_split.then_some(SPLIT_SIZE);
 
-    let parent_dir_name = if entry.meta().is_wii() {
-        "wbfs"
-    } else {
-        "games"
-    };
-
-    let parent_dir = config.mount_point().join(parent_dir_name);
-    let game_dir = make_game_dir(
-        &parent_dir,
-        entry.meta().game_id(),
-        entry.meta().game_title(),
-    )?;
+    let game_dir = game_dir(entry, config);
+    std::fs::create_dir_all(&game_dir)?;
+    reporter.step(format!("Writing to {}", game_dir.display()));
 
     let out_writer = SplitWriter::create(
         &game_dir,
@@ -103,7 +92,6 @@ fn perform_blocking(
         }
 
         let mut written = 0;
-        let mut prev_percentage = 100;
         let mut buf = vec![0; 0x8000].into_boxed_slice();
 
         for file in &mut files {
@@ -115,16 +103,7 @@ fn perform_blocking(
 
                 out_writer.write_all(&buf[..n])?;
                 written += n as u64;
-
-                let progress_percentage = written * 100 / to_write;
-                if progress_percentage != prev_percentage {
-                    let _ = tx.try_send(LongOperationState::Progress(format!(
-                        "⤓  Importing {}  {progress_percentage:02}%",
-                        entry.meta().game_title()
-                    )));
-
-                    prev_percentage = progress_percentage;
-                }
+                reporter.progress(written, to_write)?;
             }
         }
 
@@ -156,22 +135,10 @@ fn perform_blocking(
             digest_xxh64: true,
         };
 
-        let mut prev_percentage = 100;
         let finalization = disc_writer.process(
             |data, progress, total| {
                 out_writer.write_all(&data)?;
-
-                let progress_percentage = progress * 100 / total;
-                if progress_percentage != prev_percentage {
-                    let _ = tx.try_send(LongOperationState::Progress(format!(
-                        "⤓  Importing {}  {progress_percentage:02}%",
-                        entry.meta().game_title()
-                    )));
-
-                    prev_percentage = progress_percentage;
-                }
-
-                Ok(())
+                reporter.progress(progress, total)
             },
             &options,
         )?;
@@ -198,21 +165,43 @@ pub fn import_game(
     entry: ImportEntry,
     config: Config,
     drive: DriveState,
-) -> impl Stream<Item = LongOperationState> {
-    let (tx, rx) = smol::channel::bounded(1);
+    control: Control,
+) -> impl Stream<Item = Event> {
+    // what was there before, so that a failed import removes only its own files
+    let game_dir = game_dir(&entry, &config);
+    let existing = std::fs::read_dir(&game_dir)
+        .map(|entries| {
+            entries
+                .filter_map(Result::ok)
+                .map(|entry| entry.path())
+                .collect::<Vec<_>>()
+        })
+        .ok();
 
-    let _ = std::thread::spawn(move || {
-        let exit = match perform_blocking(&entry, &config, &drive, &tx) {
-            Ok(()) => {
-                LongOperationState::Finished(format!("Imported {}", entry.meta().game_title()))
+    worker::spawn(
+        control,
+        move |reporter| {
+            perform_blocking(&entry, &config, &drive, reporter)?;
+            Ok(format!("Imported {}", entry.meta().game_title()))
+        },
+        move || match existing {
+            None => {
+                let _ = std::fs::remove_dir_all(&game_dir);
             }
-            Err(e) => LongOperationState::Errored(e.to_string()),
-        };
-
-        tx.send_blocking(exit).expect("Channel should be open");
-    });
-
-    rx
+            Some(existing) => {
+                for path in std::fs::read_dir(&game_dir)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Result::ok)
+                    .map(|entry| entry.path())
+                {
+                    if !existing.contains(&path) {
+                        let _ = std::fs::remove_file(path);
+                    }
+                }
+            }
+        },
+    )
 }
 
 pub fn get_filename(
@@ -283,12 +272,20 @@ pub fn make_game_dir_name(game_id: GameID, fallback_title: &str) -> String {
     format!("{game_title} [{game_id}]")
 }
 
-fn make_game_dir(base_dir: &Path, game_id: GameID, fallback_title: &str) -> Result<PathBuf> {
-    let dir_name = make_game_dir_name(game_id, fallback_title);
-    let path = base_dir.join(dir_name);
+fn game_dir(entry: &ImportEntry, config: &Config) -> PathBuf {
+    let parent_dir_name = if entry.meta().is_wii() {
+        "wbfs"
+    } else {
+        "games"
+    };
 
-    std::fs::create_dir_all(&path)?;
-    Ok(path)
+    config
+        .mount_point()
+        .join(parent_dir_name)
+        .join(make_game_dir_name(
+            entry.meta().game_id(),
+            entry.meta().game_title(),
+        ))
 }
 
 fn wii_disc_info_to_nod_format(format: wii_disc_info::Format) -> Format {

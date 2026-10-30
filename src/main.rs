@@ -11,12 +11,12 @@ mod homebrew;
 mod library;
 #[allow(dead_code)] // most of the client is for the console pages still to come
 mod link;
-mod long_operation;
 mod message;
 mod n3ds;
 mod notifications;
 mod osc;
 mod state;
+mod tasks;
 mod toolbox;
 mod ui;
 mod update;

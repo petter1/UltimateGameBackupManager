@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use crate::{
-    games::export::ext_to_format, long_operation::LongOperationState, util::misc::OPTIMAL_THREADS,
+    games::export::ext_to_format,
+    tasks::worker::{self, Control, Event, Reporter},
+    util::misc::OPTIMAL_THREADS,
 };
 use anyhow::{Context, Result};
 use nod::{
@@ -20,7 +22,7 @@ use std::{
 fn perform_blocking(
     disc_path: PathBuf,
     out_path: PathBuf,
-    tx: &smol::channel::Sender<LongOperationState>,
+    reporter: &mut Reporter,
 ) -> Result<String> {
     let filename = out_path
         .file_name()
@@ -44,26 +46,16 @@ fn perform_blocking(
     )?;
 
     let disc_writer = DiscWriter::new(disc_reader, &format_opts)?;
+    reporter.step(format!("Writing {}", out_path.display()));
     let mut out_writer = {
         let file = File::create(&out_path)?;
         BufWriter::new(file)
     };
 
-    let mut prev_percentage = 100;
     let finalization = disc_writer.process(
         |data, progress, total| {
             out_writer.write_all(&data)?;
-
-            let progress_percentage = progress * 100 / total;
-            if progress_percentage != prev_percentage {
-                let _ = tx.try_send(LongOperationState::Progress(format!(
-                    "LongOperationState into {filename}  {progress_percentage:02}%",
-                )));
-
-                prev_percentage = progress_percentage;
-            }
-
-            Ok(())
+            reporter.progress(progress, total)
         },
         &ProcessOptions {
             processor_threads: OPTIMAL_THREADS.processor,
@@ -87,17 +79,18 @@ fn perform_blocking(
 pub fn convert_game(
     disc_path: PathBuf,
     out_path: PathBuf,
-) -> impl Stream<Item = LongOperationState> {
-    let (tx, rx) = smol::channel::bounded(1);
+    control: Control,
+) -> impl Stream<Item = Event> {
+    let partial = out_path.clone();
 
-    let _ = std::thread::spawn(move || {
-        let exit = match perform_blocking(disc_path, out_path, &tx) {
-            Ok(filename) => LongOperationState::Finished(format!("Converted {filename}")),
-            Err(e) => LongOperationState::Errored(e.to_string()),
-        };
-
-        tx.send_blocking(exit).expect("Channel should be open");
-    });
-
-    rx
+    worker::spawn(
+        control,
+        move |reporter| {
+            let filename = perform_blocking(disc_path, out_path, reporter)?;
+            Ok(format!("Converted {filename}"))
+        },
+        move || {
+            let _ = std::fs::remove_file(partial);
+        },
+    )
 }

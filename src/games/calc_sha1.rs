@@ -1,7 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Manuel Quarneti <mq1@ik.me>
 // SPDX-License-Identifier: GPL-3.0-only
 
-use crate::{games::game::Game, long_operation::LongOperationState, util::sha1_list};
+use crate::{
+    games::game::Game,
+    tasks::worker::{self, Control, Event, Reporter},
+    util::sha1_list,
+};
 use anyhow::{Context, Result};
 use nod::{
     read::{DiscOptions, DiscReader},
@@ -9,7 +13,7 @@ use nod::{
 };
 use smol::stream::Stream;
 
-fn perform_blocking(game: &Game, tx: &smol::channel::Sender<LongOperationState>) -> Result<bool> {
+fn perform_blocking(game: &Game, reporter: &mut Reporter) -> Result<bool> {
     let disc_path = game.get_disc_path_blocking().context("disc not found")?;
 
     let disc = DiscReader::new(&disc_path, &DiscOptions::default())?;
@@ -21,22 +25,8 @@ fn perform_blocking(game: &Game, tx: &smol::channel::Sender<LongOperationState>)
 
     let writer = DiscWriter::new(disc, &FormatOptions::default())?;
 
-    let mut prev_percentage = 100;
     let finalization = writer.process(
-        |_, progress, total| {
-            let progress_percentage = progress * 100 / total;
-
-            if progress_percentage != prev_percentage {
-                let _ = tx.try_send(LongOperationState::Progress(format!(
-                    "✓  Hashing {}  {progress_percentage:02}%",
-                    game.title()
-                )));
-
-                prev_percentage = progress_percentage;
-            }
-
-            Ok(())
-        },
+        |_, progress, total| reporter.progress(progress, total),
         &process_opts,
     )?;
 
@@ -47,21 +37,19 @@ fn perform_blocking(game: &Game, tx: &smol::channel::Sender<LongOperationState>)
     Ok::<_, anyhow::Error>(known_sha1)
 }
 
-pub fn calc_sha1(game: Game) -> impl Stream<Item = LongOperationState> {
-    let (tx, rx) = smol::channel::bounded(1);
-
-    let _ = std::thread::spawn(move || {
-        let exit = match perform_blocking(&game, &tx) {
-            Ok(true) => LongOperationState::Finished(format!(
-                "Hash match for {}!  -  SHA1 is well known, your dump is perfect",
-                game.title()
-            )),
-            Ok(false) => LongOperationState::Errored(format!("Hash mismatch for {}", game.title())),
-            Err(e) => LongOperationState::Errored(e.to_string()),
-        };
-
-        tx.send_blocking(exit).expect("Channel should be open");
-    });
-
-    rx
+pub fn calc_sha1(game: Game, control: Control) -> impl Stream<Item = Event> {
+    worker::spawn(
+        control,
+        move |reporter| {
+            if perform_blocking(&game, reporter)? {
+                Ok(format!(
+                    "Hash match for {}!  -  SHA1 is well known, your dump is perfect",
+                    game.title()
+                ))
+            } else {
+                anyhow::bail!("Hash mismatch for {}", game.title())
+            }
+        },
+        || {},
+    )
 }

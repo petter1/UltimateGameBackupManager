@@ -1,7 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Manuel Quarneti <mq1@ik.me>
 // SPDX-License-Identifier: GPL-3.0-only
 
-use crate::{games::game::Game, long_operation::LongOperationState, util::misc::OPTIMAL_THREADS};
+use crate::{
+    games::game::Game,
+    tasks::worker::{self, Control, Event, Reporter},
+    util::misc::OPTIMAL_THREADS,
+};
 use anyhow::{Context, Result};
 use nod::{
     common::Format,
@@ -29,11 +33,7 @@ pub fn ext_to_format(ext: &str) -> Option<Format> {
     }
 }
 
-fn perform_blocking(
-    game: &Game,
-    out_path: PathBuf,
-    tx: &smol::channel::Sender<LongOperationState>,
-) -> Result<()> {
+fn perform_blocking(game: &Game, out_path: PathBuf, reporter: &mut Reporter) -> Result<()> {
     let disc_path = game.get_disc_path_blocking().context("disc not found")?;
 
     let ext = out_path
@@ -53,27 +53,16 @@ fn perform_blocking(
     )?;
 
     let disc_writer = DiscWriter::new(disc_reader, &format_opts)?;
+    reporter.step(format!("Writing {}", out_path.display()));
     let mut out_writer = {
         let file = File::create(out_path)?;
         BufWriter::new(file)
     };
 
-    let mut prev_percentage = 100;
     let finalization = disc_writer.process(
         |data, progress, total| {
             out_writer.write_all(&data)?;
-
-            let progress_percentage = progress * 100 / total;
-            if progress_percentage != prev_percentage {
-                let _ = tx.try_send(LongOperationState::Progress(format!(
-                    "⤓  Exporting {}  {progress_percentage:02}%",
-                    game.title()
-                )));
-
-                prev_percentage = progress_percentage;
-            }
-
-            Ok(())
+            reporter.progress(progress, total)
         },
         &ProcessOptions {
             processor_threads: OPTIMAL_THREADS.processor,
@@ -94,17 +83,17 @@ fn perform_blocking(
     Ok(())
 }
 
-pub fn export_game(game: Game, out_path: PathBuf) -> impl Stream<Item = LongOperationState> {
-    let (tx, rx) = smol::channel::bounded(1);
+pub fn export_game(game: Game, out_path: PathBuf, control: Control) -> impl Stream<Item = Event> {
+    let partial = out_path.clone();
 
-    let _ = std::thread::spawn(move || {
-        let exit = match perform_blocking(&game, out_path, &tx) {
-            Ok(()) => LongOperationState::Finished(format!("Exported {}", game.title())),
-            Err(e) => LongOperationState::Errored(e.to_string()),
-        };
-
-        tx.send_blocking(exit).expect("Channel should be open");
-    });
-
-    rx
+    worker::spawn(
+        control,
+        move |reporter| {
+            perform_blocking(&game, out_path, reporter)?;
+            Ok(format!("Exported {}", game.title()))
+        },
+        move || {
+            let _ = std::fs::remove_file(partial);
+        },
+    )
 }

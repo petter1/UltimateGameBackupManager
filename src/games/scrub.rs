@@ -4,7 +4,7 @@ use crate::{
         game::Game,
         import::{SPLIT_SIZE, get_filename},
     },
-    long_operation::LongOperationState,
+    tasks::worker::{self, Control, Event, Reporter},
     util::misc::OPTIMAL_THREADS,
 };
 use anyhow::{Context, Result, anyhow};
@@ -18,19 +18,23 @@ use split_write::SplitWriter;
 use std::{
     ffi::OsStr,
     io::{BufWriter, Write},
+    path::PathBuf,
 };
 
-fn perform_blocking(game: &Game, tx: &smol::channel::Sender<LongOperationState>) -> Result<()> {
-    let disc_path = game.get_disc_path_blocking().context("disc not found")?;
-
+fn tmp_game_dir(game: &Game) -> Result<PathBuf> {
     let game_dir_name = game
         .path()
         .file_name()
         .and_then(OsStr::to_str)
         .context("invalid path")?;
 
-    let tmp_game_dir_name = format!("{game_dir_name} SCRUB");
-    let tmp_game_dir = game.path().with_file_name(tmp_game_dir_name);
+    Ok(game.path().with_file_name(format!("{game_dir_name} SCRUB")))
+}
+
+fn perform_blocking(game: &Game, reporter: &mut Reporter) -> Result<()> {
+    let disc_path = game.get_disc_path_blocking().context("disc not found")?;
+
+    let tmp_game_dir = tmp_game_dir(game)?;
     std::fs::create_dir(&tmp_game_dir)?;
 
     let format_opts = FormatOptions::new(Format::Wbfs);
@@ -77,22 +81,10 @@ fn perform_blocking(game: &Game, tx: &smol::channel::Sender<LongOperationState>)
         )?;
         let mut out_writer = BufWriter::new(out_writer);
 
-        let mut prev_percentage = 100;
         let finalization = disc_writer.process(
             |data, progress, total| {
                 out_writer.write_all(&data)?;
-
-                let progress_percentage = progress * 100 / total;
-                if progress_percentage != prev_percentage {
-                    let _ = tx.try_send(LongOperationState::Progress(format!(
-                        "Scrubbing {}  {progress_percentage:02}%",
-                        game.title()
-                    )));
-
-                    prev_percentage = progress_percentage;
-                }
-
-                Ok(())
+                reporter.progress(progress, total)
             },
             &process_opts,
         )?;
@@ -114,17 +106,20 @@ fn perform_blocking(game: &Game, tx: &smol::channel::Sender<LongOperationState>)
     Ok(())
 }
 
-pub fn scrub_game(game: Game) -> impl Stream<Item = LongOperationState> {
-    let (tx, rx) = smol::channel::bounded(1);
+pub fn scrub_game(game: Game, control: Control) -> impl Stream<Item = Event> {
+    // the game itself is only replaced once the scrubbed copy is complete
+    let partial = tmp_game_dir(&game).ok();
 
-    let _ = std::thread::spawn(move || {
-        let exit = match perform_blocking(&game, &tx) {
-            Ok(()) => LongOperationState::Finished(format!("Scrubbed {}", game.title())),
-            Err(e) => LongOperationState::Errored(e.to_string()),
-        };
-
-        tx.send_blocking(exit).expect("Channel should be open");
-    });
-
-    rx
+    worker::spawn(
+        control,
+        move |reporter| {
+            perform_blocking(&game, reporter)?;
+            Ok(format!("Scrubbed {}", game.title()))
+        },
+        move || {
+            if let Some(partial) = partial {
+                let _ = std::fs::remove_dir_all(partial);
+            }
+        },
+    )
 }

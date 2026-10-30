@@ -4,25 +4,19 @@
 use crate::{
     config::{Config, ThemePreference},
     consoles::{self, ConsolesState},
-    games::{
-        ImportEntry, covers::download_ui_covers, game::Game, games_state::GamesState,
-        import::import_game,
-    },
+    games::{covers::download_ui_covers, game::Game, games_state::GamesState},
     homebrew::{self, homebrew_state::HomebrewState},
     library::LibraryState,
-    long_operation::{LongOperationKind, LongOperationState, LongOperations},
     message::Message,
     notifications::{notification::Notification, notification_list::NotificationList},
     osc::{self, osc_state::OscState},
+    tasks::{Job, Tasks},
     toolbox::{ToolContext, ToolboxItem},
     ui::{modals::Modal, pages::Page, theme},
     util::{self, drive_state::DriveState, updates},
 };
 use anyhow::{Context, Result};
-use iced::{
-    Subscription, Task, Theme,
-    time::{self, milliseconds},
-};
+use iced::{Subscription, Task, Theme};
 use nod::{
     common::PartitionKind,
     read::{DiscOptions, DiscReader},
@@ -50,10 +44,8 @@ pub struct AppState {
     pub homebrew: HomebrewState,
     pub current_page: Page,
     pub current_modal: Option<Modal>,
-    pub long_operations: LongOperations,
-    pub import_queue: Vec<ImportEntry>,
+    pub tasks: Tasks,
     pub osc_contents: OscState,
-    pub animation_state: bool,
     pub new_version: Option<Version>,
     pub consoles: ConsolesState,
     pub library: LibraryState,
@@ -72,13 +64,11 @@ impl AppState {
                     homebrew: HomebrewState::NotLoaded,
                     current_page: Page::Library,
                     current_modal: None,
-                    import_queue: Vec::new(),
                     osc_contents: OscState::NotLoaded,
-                    animation_state: false,
                     new_version: None,
                     consoles: ConsolesState::default(),
                     library: LibraryState::default(),
-                    long_operations: LongOperations::new(),
+                    tasks: Tasks::default(),
                 },
                 Task::batch([
                     Task::perform(Config::load(data_dir), Message::GotConfig),
@@ -95,16 +85,13 @@ impl AppState {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::batch([
-            iced::event::listen_with(|event, _status, _id| {
-                if let iced::Event::Window(iced::window::Event::FileDropped(path)) = event {
-                    Some(Message::FileDropped(path))
-                } else {
-                    None
-                }
-            }),
-            time::every(milliseconds(500)).map(|_| Message::ToggleAnimationState),
-        ])
+        Subscription::batch([iced::event::listen_with(|event, _status, _id| {
+            if let iced::Event::Window(iced::window::Event::FileDropped(path)) = event {
+                Some(Message::FileDropped(path))
+            } else {
+                None
+            }
+        })])
     }
 
     pub fn theme(&self) -> Option<Theme> {
@@ -249,24 +236,25 @@ impl AppState {
         )
     }
 
-    pub fn trigger_import_task(&mut self) -> Task<Message> {
-        if let Some(entry) = self.import_queue.pop() {
-            self.long_operations.set(
-                LongOperationKind::Import,
-                LongOperationState::Progress(format!("⤓  Importing {}", entry.meta().game_title())),
-            );
-
-            Task::stream(import_game(entry, self.config.clone(), self.drive.clone()))
-                .map(|op_state| Message::SetLongOperationState(LongOperationKind::Import, op_state))
-        } else {
-            self.notifications
-                .push(Notification::info("Import queue is empty"));
-            Task::none()
+    /// Queues jobs and starts what can run now
+    pub fn add_tasks(&mut self, jobs: impl IntoIterator<Item = Job>) -> Task<Message> {
+        for job in jobs {
+            if self.tasks.add(job).is_none() {
+                self.notifications
+                    .push(Notification::info("That is already in the task list"));
+            }
         }
+
+        self.start_tasks()
     }
 
-    pub fn add_to_import_queue(&mut self, mut paths: Vec<ImportEntry>) {
-        self.import_queue.append(&mut paths);
+    pub fn start_tasks(&mut self) -> Task<Message> {
+        Task::batch(
+            self.tasks
+                .start_ready()
+                .into_iter()
+                .map(|(id, events)| Task::stream(events).map(move |e| Message::Task(id, e))),
+        )
     }
 
     pub fn reload_cover(&mut self, game_id: GameID) {

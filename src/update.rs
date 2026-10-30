@@ -4,17 +4,14 @@
 use crate::{
     config::message::ConfigMessage,
     consoles,
-    games::{
-        ImportEntry, calc_sha1::calc_sha1, convert::convert_game, export::export_game,
-        games_state::GamesState, scrub::scrub_game, txtcodes::download_cheats,
-    },
+    games::{ImportEntry, games_state::GamesState, txtcodes::download_cheats},
     homebrew::homebrew_state::HomebrewState,
     library,
-    long_operation::{LongOperationKind, LongOperationState},
     message::Message,
     notifications::notification::Notification,
     osc::osc_state::OscState,
     state::AppState,
+    tasks::{Job, Status},
     ui::{dialogs, modals::Modal, pages::Page},
 };
 use iced::Task;
@@ -31,7 +28,6 @@ fn writes_to_drive(message: &Message) -> bool {
             | Message::InstallOscApp(_)
             | Message::DownloadTxtCodes(_)
             | Message::PickedGames(_)
-            | Message::TriggerImport
             | Message::Scrub(_)
     )
 }
@@ -201,16 +197,7 @@ impl AppState {
                 Task::batch([self.get_homebrew_apps_task(), self.get_drive_info_task()])
             }
             Message::HomebrewAppsImported(_) => Task::none(),
-            Message::CalcGameSha1(game) => {
-                self.long_operations.set(
-                    LongOperationKind::Hash,
-                    LongOperationState::Progress(String::new()),
-                );
-
-                Task::stream(calc_sha1(game)).map(|op_state| {
-                    Message::SetLongOperationState(LongOperationKind::Hash, op_state)
-                })
-            }
+            Message::CalcGameSha1(game) => self.add_tasks([Job::Hash(game)]),
             Message::PickGames => {
                 if let GamesState::Loaded(games) = &self.games {
                     let existing_ids = games.get_all_game_ids().collect::<Box<[_]>>();
@@ -239,25 +226,17 @@ impl AppState {
                         .push(Notification::info("No new games selected"));
                     Task::none()
                 } else {
-                    self.add_to_import_queue(paths);
-                    self.current_page = Page::ImportQueue;
-                    Task::none()
-                }
-            }
-            Message::CancelImport(i) => {
-                self.import_queue.remove(i);
-                Task::none()
-            }
-            Message::CancelAllImports => {
-                self.import_queue.clear();
-                Task::none()
-            }
-            Message::ToggleAnimationState => {
-                if !self.long_operations.is_idle(LongOperationKind::Import) {
-                    self.animation_state = !self.animation_state;
-                }
+                    let jobs = paths
+                        .into_iter()
+                        .map(|entry| Job::Import {
+                            entry,
+                            config: self.config.clone(),
+                            drive: self.drive.clone(),
+                        })
+                        .collect::<Vec<_>>();
 
-                Task::none()
+                    self.add_tasks(jobs)
+                }
             }
             Message::ReloadCover(game_id) => {
                 self.reload_cover(game_id);
@@ -298,43 +277,7 @@ impl AppState {
             Message::PickExportDest(game) => dialogs::init_file_dialog_task().then(move |base| {
                 dialogs::make_pick_export_game_dest_dialog_task(base, game.clone())
             }),
-            Message::ExportGame(game, out_path) => {
-                self.long_operations.set(
-                    LongOperationKind::Export,
-                    LongOperationState::Progress(String::new()),
-                );
-
-                Task::stream(export_game(game, out_path)).map(|op_state| {
-                    Message::SetLongOperationState(LongOperationKind::Export, op_state)
-                })
-            }
-            Message::SetLongOperationState(op_kind, mut op_state) => {
-                let should_continue = op_kind == LongOperationKind::Import
-                    && matches!(
-                        op_state,
-                        LongOperationState::Finished(_) | LongOperationState::Errored(_)
-                    );
-
-                if let LongOperationState::Finished(success) = op_state {
-                    self.notifications.push(Notification::success(success));
-                    op_state = LongOperationState::Idle;
-                } else if let LongOperationState::Errored(error) = op_state {
-                    self.notifications.push(Notification::error(error));
-                    op_state = LongOperationState::Idle;
-                }
-
-                self.long_operations.set(op_kind, op_state);
-
-                if should_continue {
-                    Task::batch([
-                        self.trigger_import_task(),
-                        self.get_games_task(),
-                        self.get_drive_info_task(),
-                    ])
-                } else {
-                    Task::none()
-                }
-            }
+            Message::ExportGame(game, out) => self.add_tasks([Job::Export { game, out }]),
             Message::RunTool(tool) => self.run_tool(tool),
             Message::PickFileToSendViaWiiload => dialogs::init_file_dialog_task()
                 .then(dialogs::make_pick_file_to_wiiload_dialog_task),
@@ -443,11 +386,7 @@ impl AppState {
             Message::PickGameToConvert => {
                 dialogs::init_file_dialog_task().then(dialogs::make_pick_in_out_dialogs_task)
             }
-            Message::ConvertGame(disc_path, out_path) => {
-                Task::stream(convert_game(disc_path, out_path)).map(|op_state| {
-                    Message::SetLongOperationState(LongOperationKind::Convert, op_state)
-                })
-            }
+            Message::ConvertGame(disc, out) => self.add_tasks([Job::Convert { disc, out }]),
             Message::GotKnownConsoles(entries) => {
                 self.consoles.set_known(entries);
                 // so that the library can show what is on them
@@ -605,7 +544,6 @@ impl AppState {
                 self.new_version = Some(new_version);
                 Task::none()
             }
-            Message::TriggerImport => self.trigger_import_task(),
             Message::FileDropped(path) => match self.current_page {
                 Page::Games => Task::perform(ImportEntry::new(path), |res| match res {
                     Ok(entry) => Message::PickedGames(vec![entry]),
@@ -620,11 +558,40 @@ impl AppState {
             }
             Message::Scrub(game) => {
                 self.current_modal = None;
-                Task::stream(scrub_game(game))
-                    .map(|op_state| {
-                        Message::SetLongOperationState(LongOperationKind::Scrub, op_state)
-                    })
-                    .chain(Task::done(Message::RefreshGamesAndApps))
+                self.add_tasks([Job::Scrub(game)])
+            }
+            Message::Task(id, event) => {
+                let Some(entry) = self.tasks.handle(id, event) else {
+                    return Task::none();
+                };
+
+                let refresh = entry.job.changes_drive();
+                match &entry.status {
+                    Status::Done(msg) => self.notifications.push(Notification::success(msg)),
+                    Status::Failed(e) => self.notifications.push(Notification::error(format!(
+                        "{} failed: {e}",
+                        entry.job.label()
+                    ))),
+                    _ => {}
+                }
+
+                let next = self.start_tasks();
+                if refresh {
+                    Task::batch([next, self.get_games_task(), self.get_drive_info_task()])
+                } else {
+                    next
+                }
+            }
+            Message::TaskAction(id, action) => {
+                self.tasks.apply(id, action);
+                self.start_tasks()
+            }
+            Message::ClearFinishedTasks => {
+                self.tasks.clear_finished();
+                if self.tasks.is_empty() && self.current_page == Page::Tasks {
+                    self.current_page = Page::Library;
+                }
+                Task::none()
             }
         }
     }

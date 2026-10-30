@@ -71,18 +71,12 @@ pub fn sidebar(state: &AppState) -> Element<'_, Message> {
                 tooltip::Position::Right,
             )
         }),
-        (!state.import_queue.is_empty()).then(|| {
-            let import_queue_icon = if state.animation_state {
-                Icon::ArrowUp10
-            } else {
-                Icon::ArrowUp01
-            };
-
+        (!state.tasks.is_empty()).then(|| {
             tooltip(
-                my_sidebar_button(&[import_queue_icon])
-                    .active(state.current_page == Page::ImportQueue)
-                    .on_press(Message::NavigateTo(Page::ImportQueue)),
-                my_card("Import queue"),
+                my_sidebar_button(&[Icon::ListChecks])
+                    .active(state.current_page == Page::Tasks)
+                    .on_press(Message::NavigateTo(Page::Tasks)),
+                my_card("Tasks"),
                 tooltip::Position::Right,
             )
         }),
