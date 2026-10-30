@@ -517,10 +517,16 @@ impl AppState {
                 if self.consoles.searching {
                     return Task::none();
                 }
-                Task::perform(
-                    consoles::watch(self.consoles.known_addresses()),
-                    Message::GotConsoles,
-                )
+                // runs every few seconds, so a failure is only logged, not shown
+                Task::perform(consoles::watch(self.consoles.known_addresses()), |result| {
+                    match result {
+                        Ok(found) => Message::GotConsoles(Ok(found)),
+                        Err(e) => {
+                            eprintln!("WARN: {e}");
+                            Message::NoOp
+                        }
+                    }
+                })
             }
             Message::GotDrives(drives) => {
                 self.consoles.drives = drives;
