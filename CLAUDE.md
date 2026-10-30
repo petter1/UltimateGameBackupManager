@@ -32,10 +32,11 @@ request). As of 2026-10-30:
   2. Import as tasks: pull request **#5**, branch `claude/m1a-import-tasks`; `main` merged in,
      checks green, waits for the maintainer's review and a test on the Mac (see "Waiting for the
      Mac" in the roadmap). Has pause, resume, retry, cancel and "Cancel all" already.
-  3. Convert, export, scrub and checksums as tasks, remove `LongOperations`, task manager page
-     with reordering and unfinished tasks after a restart: **not started**. The next piece of
-     work; start it from `claude/m1a-import-tasks` (or from `main` once #5 is merged).
+  3. Convert, export, scrub and checksums as tasks, `LongOperations` removed, reordering:
+     branch `claude/m1a-more-tasks` on top of #5, pushed; waits for #5 and a test on the Mac.
   4. Stay awake: pull request **#7**, branch `claude/m1a-stay-awake`, open.
+  5. Unfinished tasks after a restart: **not started**, the next piece of work (start it from
+     `claude/m1a-more-tasks`, or from `main` once 3 is merged).
 - **M0b**: only the Mac part is left (`.icns`, screenshot).
 - A second, parallel version of #5 was pushed as `claude/m1a-import-tasks-alt` by mistake; the
   maintainer deletes it on GitHub (sessions may not delete remote branches). Its one useful

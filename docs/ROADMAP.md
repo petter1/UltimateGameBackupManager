@@ -31,7 +31,12 @@ each item is ticked off here (and gets its test log entry) when done.
    Then a test log entry, and merge #5.
 2. **M0b, own face** (see M0b below): `just icons` for the `.icns`, the new screenshot, the icon
    in the Dock, Finder, ⌘-Tab and at 16 px; test log entry; M0b done.
-3. **Every later M1a pull request**: try it on the Mac before merging (the stay-awake one with a
+3. **M1a, convert, export, scrub and hash as tasks** (branch `claude/m1a-more-tasks`, after #5):
+   in the Toolbox convert a game into RVZ and cancel it halfway (no file left); export two games
+   from WiiGames at once (the second waits), move a waiting one earlier; scrub a Wii game with an
+   update partition, then cancel a second scrub (the game must still start in USB Loader GX);
+   check the hash of a known good dump. Test log entry, then merge.
+4. **Every later M1a pull request**: try it on the Mac before merging (the stay-awake one with a
    long import and the Mac left alone until it would sleep).
 
 ## How the app is meant to work
@@ -114,9 +119,12 @@ The fork still shows TinyWiiBackupManager's icon (Wiimote, "TWBM") and screensho
    `LongOperationKind::Import`. Imports start when added (no "Start importing" any more); pause,
    cancel (removes what was written) and retry per task; the Tasks page already lists every
    task and the history. Still to try on the Mac with real games (test log).
-3. **Convert, export, scrub, checksums as tasks**, then `LongOperations` is removed; the task
-   manager page with pause, cancel, retry, reorder and the history; unfinished tasks after a restart.
+3. **Convert, export, scrub, checksums as tasks** (`claude/m1a-more-tasks`, cloud session
+   2026-10-30, on top of #5): `LongOperations` is removed; waiting tasks can be moved earlier
+   or later on the Tasks page. Still to try on the Mac (test log).
 4. **Stay awake** while a task is running (macOS, Windows, Linux).
+5. **Unfinished tasks after a restart**: listed again, to resume or drop. Split off from 3,
+   which was big enough; needs the jobs saved in the data folder.
 
 Every longer action – import, copy to a drive, install on a console, convert, export, scrub,
 checksums, downloads, scans, later unpacking and injecting – becomes a **task** in one task manager.
