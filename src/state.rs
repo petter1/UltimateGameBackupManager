@@ -16,7 +16,7 @@ use crate::{
     osc::{self, osc_state::OscState},
     toolbox::{ToolContext, ToolboxItem},
     ui::{modals::Modal, pages::Page, theme},
-    util::{self, drive_state::DriveState, updates},
+    util::{self, drive_state::DriveState, keep_awake::KeepAwake, updates},
 };
 use anyhow::{Context, Result};
 use iced::{
@@ -57,6 +57,7 @@ pub struct AppState {
     pub new_version: Option<Version>,
     pub consoles: ConsolesState,
     pub library: LibraryState,
+    pub keep_awake: KeepAwake,
 }
 
 impl AppState {
@@ -79,6 +80,7 @@ impl AppState {
                     consoles: ConsolesState::default(),
                     library: LibraryState::default(),
                     long_operations: LongOperations::new(),
+                    keep_awake: KeepAwake::default(),
                 },
                 Task::batch([
                     Task::perform(Config::load(data_dir), Message::GotConfig),
@@ -123,6 +125,11 @@ impl AppState {
                 .into_iter()
                 .map(|addr| Task::done(Message::LoadConsoleTitles(addr))),
         )
+    }
+
+    /// Whether data moves right now, so the computer should stay awake.
+    pub fn is_moving_data(&self) -> bool {
+        self.long_operations.is_any_running()
     }
 
     pub fn selected_drive(&self) -> Option<&consoles::Drive> {

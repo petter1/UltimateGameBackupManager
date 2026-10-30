@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (new app ID `io.github.petter1.UltimateGameBackupManager`, own data directory and update checks).
   The entries below are TinyWiiBackupManager's history.
 - 🎨 Own icon: the letters "UGBM" instead of TinyWiiBackupManager's Wiimote.
+- ☕ The computer doesn't go to sleep from idleness while games are imported, converted,
+  exported, scrubbed or checked (macOS: `caffeinate`, Linux: `systemd-inhibit`, Windows:
+  `SetThreadExecutionState`). The screen may still turn off.
 
 ## [v6.1.9] - 2026-10-21
 

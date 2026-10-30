@@ -96,7 +96,10 @@ The fork still shows TinyWiiBackupManager's icon (Wiimote, "TWBM") and screensho
    bottom of every page; replaces `LongOperationKind::Import`.
 3. **Convert, export, scrub, checksums as tasks**, then `LongOperations` is removed; the task
    manager page with pause, cancel, retry, reorder and the history; unfinished tasks after a restart.
-4. **Stay awake** while a task is running (macOS, Windows, Linux).
+4. **Stay awake** while a task is running (macOS, Windows, Linux) (`claude/m1a-stay-awake`,
+   cloud session 2026-10-30): `src/util/keep_awake.rs`, held while a long operation runs. Once
+   both this and pull request 2 are in `main`, `AppState::is_moving_data` also asks
+   `tasks.is_busy()` (the second of the two to be merged adds it). To try on the Mac.
 
 Every longer action – import, copy to a drive, install on a console, convert, export, scrub,
 checksums, downloads, scans, later unpacking and injecting – becomes a **task** in one task manager.
