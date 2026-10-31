@@ -228,8 +228,21 @@ impl AppState {
                     Task::none()
                 }
             }
-            Message::PickedGames(paths) => {
-                if paths.is_empty() {
+            Message::PickedGames(mut paths) => {
+                let picked = paths.len();
+                // also for a dropped file, which doesn't go through the dialog's check
+                paths.retain(|entry| {
+                    let on_drive = entry.is_on_drive(self.config.mount_point());
+                    if on_drive {
+                        self.notifications.push(Notification::info(format!(
+                            "{} is already on the drive",
+                            entry.display_title()
+                        )));
+                    }
+                    !on_drive
+                });
+
+                if picked == 0 {
                     self.notifications
                         .push(Notification::info("No new games selected"));
                     Task::none()
