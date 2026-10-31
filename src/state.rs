@@ -248,7 +248,6 @@ impl AppState {
         )
     }
 
-    /// Adds a job to the task manager; [`Self::start_ready_tasks`] starts it.
     /// The discs of the imports to the selected drive that haven't finished yet.
     pub fn queued_imports(&self) -> Vec<(GameID, u8)> {
         self.jobs
@@ -269,6 +268,7 @@ impl AppState {
             .collect()
     }
 
+    /// Adds a job to the task manager; [`Self::start_ready_tasks`] starts it.
     pub fn add_job(&mut self, job: Job) {
         let id = self.tasks.add(job.title(), job.resources());
         self.jobs.insert(id, job);

@@ -343,6 +343,17 @@ impl AppState {
                 Task::none()
             }
             Message::RetryTask(id) => {
+                // the same disc may have been picked again since this import failed
+                if let Some(Job::Import { entry, config, .. }) = self.jobs.get(&id)
+                    && config.mount_point() == self.config.mount_point()
+                    && self.queued_imports().contains(&entry.target())
+                {
+                    self.notifications.push(Notification::info(format!(
+                        "{} is already being imported",
+                        entry.display_title()
+                    )));
+                    return Task::none();
+                }
                 self.tasks.retry(id);
                 self.start_ready_tasks()
             }
