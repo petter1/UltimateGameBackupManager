@@ -35,11 +35,39 @@ console, a real drive or a real collection can show.
 | Name | Kind | Details |
 | --- | --- | --- |
 | petter1 | 3DS | runs vcinject Link |
-| WiiGames | Wii/GameCube USB drive | was NTFS (macOS reads only), being reformatted to FAT32 (M1b) |
+| Petter1 | 3DS XL | runs vcinject Link; a second console, named like the 3DS in My Consoles |
+| WiiGames | Wii/GameCube USB drive | FAT32 (was NTFS, which macOS only reads) |
 | gamestation | drive | ROM source |
 | iCloud collection | ROM source | files only in iCloud aren't downloaded |
+| WIIRO | drive | read-only FAT32 disk image (`hdiutil attach -readonly`), for read-only tests |
 
 ## Entries
+
+### 2026-10-31 · Mac · own icon and screenshot
+
+| | |
+| --- | --- |
+| **Device** | the Mac (macOS 27, display at 1×); the 3DS petter1 (online) and the 3DS XL Petter1 (offline), the drives WiiGames and WIIRO for the screenshot |
+| **What** | M0b, own face: `.icns`, screenshot, icon on macOS; item 2 of "Waiting for the Mac" |
+| **Who** | petter1, with Claude |
+| **When** | 2026-10-31, `main` at 45202fc (debug build), macOS 27 |
+| **How** | `just icons` (resvg 0.49, ImageMagick, `iconutil`) for the `.icns`; the debug build put into a copy of `package/macos/App` as a `.app` and started; icon looked at in the Dock, ⌘-Tab, the About page and a Finder list (16 px). Screenshot of the window on My Consoles (`screencapture -iWo`), shrunk with `oxipng -o 4` |
+| **Why** | the fork still had TWBM's `.icns` and screenshot; cloud sessions have no macOS |
+| **Result** | ⚠️ New icon in the Dock, ⌘-Tab, the About page and Finder. The other generated files came out the same; only `icon.ico` differed in bytes with the newer ImageMagick (256 px layer stored as BMP, same pixels), so the old one stays. ⚠️ At 16 px (Finder list on a 1× display) the four letters blur into a square; 32 px reads fine. The maintainer keeps it. The screenshot is 1263×950 (1× display) instead of about 1800×1500; accepted |
+| **Follow-up** | none |
+
+### 2026-10-31 · WiiGames · import as tasks
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32; WIIRO, a read-only FAT32 disk image |
+| **What** | M1a, import as tasks (#5), item 1 of "Waiting for the Mac" |
+| **Who** | petter1 |
+| **When** | 2026-10-31, `main` with #15 (commit 4421619), macOS 27 |
+| **How** | Wii and GameCube games imported to WiiGames (Wii games split); progress on the Tasks page and in the bar on other pages; one paused and resumed, one cancelled, two discs of one GameCube game with the second cancelled, a cancelled one retried. Read-only drive: no NTFS drive at hand, so a FAT32 image mounted read-only (`hdiutil attach -readonly`), then an import to it |
+| **Why** | #5 was merged before the test on real hardware |
+| **Result** | ✅ Works as listed. With two discs of one game, both tasks had the same title (fixed in #15, confirmed). Read-only drive: one message "WIIRO is read-only: nothing can be written to it", no task. The NTFS wording of that message isn't tested (needs a real NTFS drive). |
+| **Follow-up** | none |
 
 ### 2026-10-28 · WiiGames · importing Wii games to the drive
 
