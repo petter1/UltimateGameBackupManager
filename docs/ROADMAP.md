@@ -263,15 +263,16 @@ sees what is on it, keeps backups of it and sets up new cards. Builds on M1b (fo
 
 ### M2b · Explain and repair bad dumps (M) – after M2
 
-Today "Check the hash" only says "Hash mismatch" (a dump's SHA-1 against the Redump list). A hash
-can't repair anything, but most mismatches aren't damage, and real damage can often be fixed from a
-second copy, which the library knows about.
+Today the game info's "SHA1" button only says "Hash mismatch" (a dump's SHA-1 against the Redump
+list). A hash can't repair anything, but most mismatches aren't damage, and real damage can often
+be fixed from a second copy, which the library knows about.
 
 - **Say why it doesn't match**, instead of only "mismatch":
   - *shortened*: the update partition was removed or the game was scrubbed. The game works; the
     dump can't match Redump again without that data.
-  - *damaged*: Wii partitions carry a SHA-1 for every 32 KiB block (the H0–H3 tables); checking
-    them names the bad blocks, as Dolphin's "Verify" does.
+  - *damaged*: each 32 KiB block of a Wii partition carries SHA-1s of its data (the H0–H3
+    tables); checking them names the bad blocks, as Dolphin's "Verify" does. GameCube discs have
+    no such tables, so for them only the whole hash is known.
   - *other version*: a hack, another region or revision; with M2 the databases say which.
 - **Repair from another copy**: when the library has the same game twice (e.g. WiiGames and
   gamestation), take the good blocks from each, and keep the result only if its hash is in the
@@ -280,7 +281,8 @@ second copy, which the library knows about.
 - Maybe later: put a removed update partition back from another game of the same region whose
   partition is byte-identical.
 - First check that a Redump-exact dump matches at all: every WBFS on WiiGames tried on
-  2026-10-31 gave "mismatch". The GameCube ISOs on gamestation named after Redump are the next
+  2026-10-31 gave "mismatch" – probably the *shortened* case, as WBFS tools often drop the update
+  partition. The GameCube ISOs on gamestation named after Redump are the next
   candidates (not hashed yet: the drive stopped answering during the try).
 
 ### M3 · Injects by content (M–L)
