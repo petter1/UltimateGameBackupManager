@@ -5,9 +5,15 @@ use crate::notifications::notification::Notification;
 use smol::{fs::File, io::AsyncWriteExt, lock::Mutex};
 use std::{path::Path, sync::Arc};
 
+/// How many messages the history keeps; the log file has all.
+const HISTORY_LEN: usize = 1000;
+
 #[derive(Debug)]
 pub struct NotificationList {
+    /// The toasts shown in the window, until closed.
     inner: Vec<Notification>,
+    /// Every message since the start, closed or not, for the Messages page.
+    history: Vec<Notification>,
     log: Option<Arc<Mutex<File>>>,
 }
 
@@ -23,6 +29,7 @@ impl NotificationList {
 
         NotificationList {
             inner: Vec::new(),
+            history: Vec::new(),
             log,
         }
     }
@@ -38,6 +45,17 @@ impl NotificationList {
                 let _ = log.lock().await.write_all(s.as_bytes()).await;
             })
             .detach();
+        }
+
+        // in the history, the same message right after itself is one entry
+        match self.history.last_mut() {
+            Some(last) if last.is_same(&notification) => last.repeat(notification.clone()),
+            _ => {
+                if self.history.len() == HISTORY_LEN {
+                    self.history.remove(0);
+                }
+                self.history.push(notification.clone());
+            }
         }
 
         // the same message again (e.g. one error per file) is counted, not shown again
@@ -58,6 +76,15 @@ impl NotificationList {
     pub fn iter(&self) -> impl Iterator<Item = &Notification> {
         self.inner.iter()
     }
+
+    /// Every message since the start, the oldest first.
+    pub fn history(&self) -> &[Notification] {
+        &self.history
+    }
+
+    pub fn clear_history(&mut self) {
+        self.history.clear();
+    }
 }
 
 #[cfg(test)]
@@ -67,6 +94,7 @@ mod tests {
     fn list() -> NotificationList {
         NotificationList {
             inner: Vec::new(),
+            history: Vec::new(),
             log: None,
         }
     }
@@ -92,6 +120,32 @@ mod tests {
                 ("Disk full", 1)
             ]
         );
+    }
+
+    #[test]
+    fn the_history_keeps_closed_messages_and_groups_runs() {
+        let mut list = list();
+        list.push(Notification::error("Read-only file system"));
+        list.push(Notification::error("Read-only file system"));
+        list.push(Notification::info("Imported"));
+        list.push(Notification::error("Read-only file system"));
+        list.close(0);
+        list.close(0);
+
+        let history = list
+            .history()
+            .iter()
+            .map(|n| (n.label(), n.count()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            history,
+            [
+                ("Read-only file system", 2),
+                ("Imported", 1),
+                ("Read-only file system", 1)
+            ]
+        );
+        assert!(!list.has_notifications());
     }
 
     #[test]

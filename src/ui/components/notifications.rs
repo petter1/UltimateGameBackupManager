@@ -13,8 +13,9 @@ use iced::{
 };
 use lucide_icons::iced::{icon_alert_triangle, icon_check, icon_info, icon_x};
 
-fn item((i, notification): (usize, &Notification)) -> Element<'_, Message> {
-    let icon = match notification.level() {
+/// The icon of a level, in its color.
+pub fn level_icon<'a>(level: NotificationLevel) -> iced::widget::Text<'a> {
+    match level {
         NotificationLevel::Info => icon_info().style(|theme: &Theme| text::Style {
             color: Some(theme.palette().primary),
         }),
@@ -27,7 +28,11 @@ fn item((i, notification): (usize, &Notification)) -> Element<'_, Message> {
         NotificationLevel::Success => icon_check().style(|theme: &Theme| text::Style {
             color: Some(theme.palette().success),
         }),
-    };
+    }
+}
+
+fn item((i, notification): (usize, &Notification)) -> Element<'_, Message> {
+    let icon = level_icon(notification.level());
 
     my_card(
         row![

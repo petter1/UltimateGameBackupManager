@@ -16,7 +16,8 @@ use crate::{
         },
         pages::{
             Page, about::about, consoles::consoles, games::games, homebrew_apps::homebrew_apps,
-            library::library, osc_apps::osc_apps, tasks::tasks, toolbox::toolbox,
+            library::library, messages::messages, osc_apps::osc_apps, tasks::tasks,
+            toolbox::toolbox,
         },
     },
 };
@@ -39,6 +40,7 @@ pub fn view(state: &AppState) -> Element<'_, Message> {
                     Page::Settings => settings(&state.config).map(Message::Config),
                     Page::Toolbox => toolbox(state),
                     Page::Tasks => tasks(state),
+                    Page::Messages => messages(state),
                     Page::About => about(state),
                 })
                 .width(Length::Fill)

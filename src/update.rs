@@ -329,6 +329,18 @@ impl AppState {
                 self.tasks.retry(id);
                 self.start_ready_tasks()
             }
+            Message::ClearMessages => {
+                self.notifications.clear_history();
+                Task::none()
+            }
+            Message::SearchMessages(search) => {
+                self.messages_search = search;
+                Task::none()
+            }
+            Message::SetMessagesProblemsOnly(only) => {
+                self.messages_problems_only = only;
+                Task::none()
+            }
             Message::ClearTaskHistory => {
                 self.clear_task_history();
                 Task::none()

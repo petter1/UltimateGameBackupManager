@@ -66,6 +66,25 @@ impl Notification {
         self.level
     }
 
+    /// When it came (the latest, if it came again), as "14:03:27".
+    pub fn time(&self) -> Option<String> {
+        self.created.map(|created| {
+            format!(
+                "{:02}:{:02}:{:02}",
+                created.hour(),
+                created.minute(),
+                created.second()
+            )
+        })
+    }
+
+    pub fn is_problem(&self) -> bool {
+        matches!(
+            self.level,
+            NotificationLevel::Warning | NotificationLevel::Error
+        )
+    }
+
     pub fn count(&self) -> u32 {
         self.count
     }
