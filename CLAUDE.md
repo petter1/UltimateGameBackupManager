@@ -61,16 +61,25 @@ start from `main` and only see what is there, so the update goes to `main` in it
 - A disc already on the drive isn't imported again, from the dialog or by drag and drop: merged
   (#33). This keeps #13's restart cleanup (it deletes every file with the game's prefix) from
   removing a game that was there before. Open: picking the same game twice before its import
-  starts still queues two imports.
+  starts still queues two imports: fixed in pull request **#36** (`claude/no-double-import`),
+  open, not tried on the Mac.
+- A drive that doesn't answer (a hung disk, or macOS's access prompt for removable volumes, which
+  every re-signed test build triggers again) emptied the drive list in My Consoles: pull request
+  **#35** (`claude/drives-not-answering`), open, tried on the Mac.
+- **M2b, explain bad dumps**: first step, pull request **#38** (`claude/m2b-explain-mismatch`),
+  open: "Hash mismatch" says when the update partition is missing (32 of the 48 Wii WBFS on
+  WiiGames). nod's H0–H3 validation fails on WBFS as it is (see the roadmap).
 - **M1a+, notifications and log**: first step, pull request **#20**, branch
   `claude/m1a-plus-group-notifications`, open: the same message again is counted ("245×") in
   one toast; works on the Mac. Second step, pull request **#22**, branch `claude/m1a-plus-system-notifications`,
   open: system notifications (`notify-rust`) for a task done or failed and an update ready while
-  the window is in the background, with a setting; on the Mac it was sent, the banner not seen
-  yet; #20 and #22 (and #7, a field in `AppState`) touch the same lines,
+  the window is in the background, with a setting. Fixed 2026-10-31: an app opened in the
+  background never sent any (it assumed the focus). The banner is still not seen; a test build
+  may first need the notification permission; #20 and #22 (and #7, a field in `AppState`) touch the same lines,
   the one merged later keeps both. Third step, pull request **#24**, branch
   `claude/m1a-plus-notification-center`, stacked on #20 (merge #20 first): a Messages page with
-  every message since the start, a filter for warnings and errors, "Open log file"; works on the
+  every message since the start, a filter for warnings and errors, a search field (added
+  2026-10-31, not tried on the Mac), "Open log file"; works on the
   Mac. Test log entries for these Mac tests: drafts in the M0b session's notes. Still open
   for M1a+: see the roadmap.
 - Branches to delete on GitHub: `feature/task-manager` once #11 is merged. Sessions on the
