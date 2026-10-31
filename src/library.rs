@@ -5,11 +5,18 @@
 
 use crate::n3ds::{cia, smdh};
 use iced::widget::image;
+use smol::{Timer, future::FutureExt};
 use std::{
     ffi::OsStr,
     fs::{self, File},
     io::BufReader,
     path::{Path, PathBuf},
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+    thread,
+    time::{Duration, Instant},
 };
 
 /// How deep a scan goes into a source's folders
@@ -188,6 +195,18 @@ pub struct LibraryItem {
     pub in_cloud: bool,
     /// the same file in other places (other sources, backups)
     pub copies: Vec<PathBuf>,
+}
+
+impl LibraryItem {
+    /// Whether the item is a folder (an unpacked release, an SD card copy, a Wii U title), told
+    /// from its kind and name so that a disk that doesn't answer isn't asked.
+    fn is_folder(&self) -> bool {
+        match self.kind {
+            ItemKind::SdBackup | ItemKind::WiiUTitle => true,
+            ItemKind::Archive => classify(&self.path).is_none(),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -418,7 +437,13 @@ fn read_item(path: PathBuf, platform: Platform, kind: ItemKind) -> Option<Librar
     Some(item)
 }
 
-fn walk(dir: &Path, depth: usize, found: &mut Vec<(PathBuf, Platform, ItemKind)>) {
+fn walk(
+    dir: &Path,
+    depth: usize,
+    found: &mut Vec<(PathBuf, Platform, ItemKind)>,
+    progress: &AtomicUsize,
+) {
+    progress.fetch_add(1, Ordering::Relaxed);
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
@@ -458,7 +483,7 @@ fn walk(dir: &Path, depth: usize, found: &mut Vec<(PathBuf, Platform, ItemKind)>
                 } else if let Some(platform) = sd_backup_platform(&path) {
                     found.push((path, platform, ItemKind::SdBackup));
                 } else if depth < MAX_DEPTH {
-                    walk(&path, depth + 1, found);
+                    walk(&path, depth + 1, found, progress);
                 }
             }
             Ok(t) if t.is_file() => {
@@ -498,18 +523,33 @@ impl LibraryState {
     }
 }
 
-/// Scans the sources; blocking, run it with smol::unblock
-pub fn scan(sources: &[PathBuf]) -> Vec<LibraryItem> {
-    let mut found = Vec::new();
-    for source in sources {
-        walk(source, 0, &mut found);
-    }
-
-    let mut items: Vec<LibraryItem> = found
-        .into_iter()
-        .filter_map(|(path, platform, kind)| read_item(path, platform, kind))
+/// Scans the sources one after the other; blocking. The app uses [`scan_async`].
+#[cfg(test)]
+fn scan(sources: &[PathBuf]) -> Vec<LibraryItem> {
+    let progress = AtomicUsize::new(0);
+    let items = sources
+        .iter()
+        .flat_map(|source| scan_source(source, &progress))
         .collect();
+    sort_and_merge(items)
+}
 
+/// The items of one source, each on its own, before copies are merged; blocking. Counts up
+/// `progress` for every folder and file it reads, so a caller can tell a source that doesn't answer.
+fn scan_source(source: &Path, progress: &AtomicUsize) -> Vec<LibraryItem> {
+    let mut found = Vec::new();
+    walk(source, 0, &mut found, progress);
+
+    found
+        .into_iter()
+        .filter_map(|(path, platform, kind)| {
+            progress.fetch_add(1, Ordering::Relaxed);
+            read_item(path, platform, kind)
+        })
+        .collect()
+}
+
+fn sort_and_merge(mut items: Vec<LibraryItem>) -> Vec<LibraryItem> {
     items.sort_by(|a, b| {
         a.platform
             .cmp(&b.platform)
@@ -532,7 +572,7 @@ fn merge_copies(items: Vec<LibraryItem>) -> Vec<LibraryItem> {
                 .map(|n| n.to_string_lossy().to_lowercase())
                 .unwrap_or_default(),
             item.size,
-            item.path.is_dir(),
+            item.is_folder(),
         );
 
         match index.get(&key) {
@@ -556,19 +596,110 @@ fn merge_copies(items: Vec<LibraryItem>) -> Vec<LibraryItem> {
     merged
 }
 
-pub async fn scan_async(sources: Vec<PathBuf>) -> Vec<LibraryItem> {
-    smol::unblock(move || scan(&sources)).await
+/// How long a source may go without reading a single folder or file before the scan gives up
+/// on it (a sleeping or hung disk, a lost network share).
+const SOURCE_SILENCE: Duration = Duration::from_secs(15);
+
+/// A scan of all sources; the ones that stop answering keep their items from the last scan.
+pub struct Scan {
+    pub items: Vec<LibraryItem>,
+    pub unanswered: Vec<PathBuf>,
+}
+
+/// Scans every source on its own thread. A source that reads nothing for [`SOURCE_SILENCE`] is
+/// given up (its thread is left to finish or hang); its items come from the last scan saved in
+/// `data_dir`, so one dead disk doesn't hold up the others.
+pub async fn scan_async(sources: Vec<PathBuf>, data_dir: &'static Path) -> Scan {
+    let (sender, receiver) = smol::channel::unbounded();
+    let mut pending: Vec<(PathBuf, Arc<AtomicUsize>, usize, Instant)> = Vec::new();
+
+    for (index, source) in sources.iter().enumerate() {
+        let progress = Arc::new(AtomicUsize::new(0));
+        pending.push((source.clone(), progress.clone(), 0, Instant::now()));
+        let sender = sender.clone();
+        let source = source.clone();
+        thread::spawn(move || {
+            let items = scan_source(&source, &progress);
+            let _ = sender.send_blocking((index, items));
+        });
+    }
+    drop(sender);
+
+    let mut done: Vec<Option<Vec<LibraryItem>>> = vec![None; sources.len()];
+    let mut unanswered = Vec::new();
+    // read only when a source is given up; the app may not have loaded it yet at the start
+    let mut previous: Option<Vec<LibraryItem>> = None;
+
+    while done.iter().any(Option::is_none) {
+        let next = async { receiver.recv().await.ok() }
+            .or(async {
+                Timer::after(Duration::from_secs(1)).await;
+                None
+            })
+            .await;
+        if let Some((index, items)) = next {
+            done[index] = Some(items);
+        }
+
+        let now = Instant::now();
+        for (index, (source, progress, last_seen, last_change)) in pending.iter_mut().enumerate() {
+            if done[index].is_some() {
+                continue;
+            }
+            let seen = progress.load(Ordering::Relaxed);
+            if seen != *last_seen {
+                *last_seen = seen;
+                *last_change = now;
+            } else if now.duration_since(*last_change) >= SOURCE_SILENCE {
+                if previous.is_none() {
+                    previous = Some(smol::unblock(move || read_cache(data_dir)).await);
+                }
+                let previous = previous.as_deref().unwrap_or_default();
+                done[index] = Some(previous_items_in(previous, source));
+                unanswered.push(source.clone());
+            }
+        }
+    }
+
+    let items = done.into_iter().flatten().flatten().collect();
+    Scan {
+        items: smol::unblock(move || sort_and_merge(items)).await,
+        unanswered,
+    }
+}
+
+/// The items of the last scan that were in `source`, one per file again (copies split off), so
+/// they can be merged with the other sources' fresh items. Doesn't touch the disk.
+fn previous_items_in(previous: &[LibraryItem], source: &Path) -> Vec<LibraryItem> {
+    previous
+        .iter()
+        .flat_map(|item| {
+            std::iter::once(&item.path)
+                .chain(&item.copies)
+                .filter(|path| path.starts_with(source))
+                .map(|path| LibraryItem {
+                    path: path.clone(),
+                    copies: Vec::new(),
+                    ..item.clone()
+                })
+        })
+        .collect()
 }
 
 const CACHE_FILENAME: &str = "library.json";
 
+/// The last scan as saved, without icons, so no source is read; blocking.
+fn read_cache(data_dir: &Path) -> Vec<LibraryItem> {
+    fs::read_to_string(data_dir.join(CACHE_FILENAME))
+        .ok()
+        .and_then(|contents| serde_json::from_str(&contents).ok())
+        .unwrap_or_default()
+}
+
 /// The last scan, to show the library at once while the sources are scanned again
 pub async fn load_cache(data_dir: &'static Path) -> Vec<LibraryItem> {
     smol::unblock(move || {
-        let Ok(contents) = fs::read_to_string(data_dir.join(CACHE_FILENAME)) else {
-            return Vec::new();
-        };
-        let mut items: Vec<LibraryItem> = serde_json::from_str(&contents).unwrap_or_default();
+        let mut items = read_cache(data_dir);
 
         // icons aren't cached; a CIA's are read from a few KB of it
         for item in items
@@ -667,5 +798,79 @@ mod tests {
         let zip = items.iter().find(|i| i.name == "Mario [NSME00]").unwrap();
         assert_eq!(zip.id, Some(ItemId::Game("NSME00".into())));
         assert_eq!(items[0].id, None);
+    }
+
+    #[test]
+    fn a_scan_of_every_source_matches_the_blocking_one() {
+        let a = tempfile::tempdir().unwrap();
+        let b = tempfile::tempdir().unwrap();
+        fs::create_dir_all(a.path().join("GBA")).unwrap();
+        fs::create_dir_all(b.path().join("GBA")).unwrap();
+        fs::write(a.path().join("GBA/Metroid_Fusion.gba"), b"rom").unwrap();
+        fs::write(b.path().join("GBA/Metroid_Fusion.gba"), b"rom").unwrap();
+        fs::write(b.path().join("GBA/Golden_Sun.gba"), b"rom").unwrap();
+        let sources = vec![a.path().to_path_buf(), b.path().to_path_buf()];
+
+        // every source answers, so the last scan isn't read
+        let data_dir = Path::new("no-cache-needed");
+        let result = smol::block_on(scan_async(sources.clone(), data_dir));
+        assert!(result.unanswered.is_empty());
+        let names = |items: &[LibraryItem]| -> Vec<(String, usize)> {
+            items
+                .iter()
+                .map(|i| (i.name.clone(), i.copies.len()))
+                .collect()
+        };
+        assert_eq!(names(&result.items), names(&scan(&sources)));
+        assert_eq!(
+            names(&result.items),
+            vec![("Golden Sun".into(), 0), ("Metroid Fusion".into(), 1)]
+        );
+    }
+
+    #[test]
+    fn the_last_scan_of_a_source_is_split_into_its_files() {
+        let item = LibraryItem {
+            path: PathBuf::from("/Volumes/a/GBA/Metroid_Fusion.gba"),
+            platform: Platform::GameBoyAdvance,
+            kind: ItemKind::Rom,
+            name: "Metroid Fusion".into(),
+            size: 3,
+            id: None,
+            icon: None,
+            in_cloud: false,
+            copies: vec![
+                PathBuf::from("/Volumes/b/GBA/Metroid_Fusion.gba"),
+                PathBuf::from("/Volumes/b/backup/Metroid_Fusion.gba"),
+            ],
+        };
+
+        let from_b = previous_items_in(std::slice::from_ref(&item), Path::new("/Volumes/b"));
+        assert_eq!(from_b.len(), 2);
+        assert!(
+            from_b
+                .iter()
+                .all(|i| i.copies.is_empty() && i.name == "Metroid Fusion")
+        );
+        assert!(previous_items_in(&[item], Path::new("/Volumes/c")).is_empty());
+    }
+
+    #[test]
+    fn folders_are_told_without_the_disk() {
+        let item = |path: &str, kind| LibraryItem {
+            path: PathBuf::from(path),
+            platform: Platform::WiiU,
+            kind,
+            name: String::new(),
+            size: 0,
+            id: None,
+            icon: None,
+            in_cloud: false,
+            copies: Vec::new(),
+        };
+        assert!(item("/x/WiiU/Cars_3_EUR_WiiU-CAT", ItemKind::Archive).is_folder());
+        assert!(!item("/x/WiiU/Cars 3.rar", ItemKind::Archive).is_folder());
+        assert!(item("/x/WiiU/Mario Kart 8", ItemKind::WiiUTitle).is_folder());
+        assert!(!item("/x/Wii/Glacier.wbfs", ItemKind::Disc).is_folder());
     }
 }
