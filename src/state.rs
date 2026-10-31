@@ -80,7 +80,8 @@ impl AppState {
                     new_version: None,
                     consoles: ConsolesState::default(),
                     library: LibraryState::default(),
-                    window_focused: true,
+                    // the window reports Focused once it has the focus; one opened in the background never does
+                    window_focused: false,
                 },
                 Task::batch([
                     Task::perform(Config::load(data_dir), Message::GotConfig),
