@@ -43,6 +43,19 @@ console, a real drive or a real collection can show.
 
 ## Entries
 
+### 2026-10-31 · WiiGames, gamestation · why a hash doesn't match (#38)
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32; gamestation (ROM source), answering again |
+| **What** | #38: the hash task says why a dump doesn't match; and whether a Redump-exact dump matches the built-in list at all |
+| **Who** | Claude on petter1's Mac, the app driven in the background (computer use) |
+| **When** | 2026-10-31, `claude/m2b-explain-mismatch` 538e35ab (debug build), macOS 27 |
+| **How** | "SHA1" in the game info of Glacier 3 (no update partition) and of Disney Planes: Fire & Rescue (has one, the info shows "Scrub"). Separately, `shasum` of "Worms 3D (USA) (En,Fr).iso" on gamestation (a GameCube ISO named after Redump) looked up in the app's `sha1_list.bin` |
+| **Why** | every WBFS on WiiGames gave "Hash mismatch" without a reason |
+| **Result** | ✅ Glacier 3: "…: the dump has no update partition (often removed when making a WBFS), so it can't match the disc. The game itself is not affected". Disney Planes: "…: not a known good dump. It may be damaged, another version or changed otherwise; the hash can't tell which". The GameCube ISO's SHA-1 (373505dc…) is in the list, so a Redump-exact dump does match. The message names the game twice ("Check the hash of Glacier 3: Hash mismatch for Glacier 3: …") |
+| **Follow-up** | the doubled title; a hash match through the app (the ISO is on gamestation, the button is for games on the drive) |
+
 ### 2026-10-31 · WiiGames · a game already on the drive isn't imported again (#33)
 
 | | |
@@ -118,8 +131,8 @@ console, a real drive or a real collection can show.
 | **When** | 2026-10-31, `claude/m1a-resume-tasks` c875da5f (debug build), macOS 27 |
 | **How** | Two hash tasks (one running, one waiting), then Quit from the menu; again with a hard kill; restart; Tasks page; drop one, resume one, let it finish; `tasks.json` checked after each step |
 | **Why** | #13 waits for the Mac test |
-| **Result** | ⚠️ `tasks.json` holds both tasks; after Quit and after a kill the app says "2 task(s) weren't finished…" and the Tasks page lists them; drop removes one, resume runs it again, `tasks.json` is `[]` once it ended. **Bug**: no Tasks icon in the sidebar when only unfinished tasks exist, so the page couldn't be reached; fixed in 21a8aec1, not re-checked yet. Removing half-written imports, conversions, exports and scrubs not tried (would write to the drive) |
-| **Follow-up** | re-check after 21a8aec1; cleanup after an interrupted import |
+| **Result** | ⚠️ `tasks.json` holds both tasks; after Quit and after a kill the app says "2 task(s) weren't finished…" and the Tasks page lists them; drop removes one, resume runs it again, `tasks.json` is `[]` once it ended. **Bug**: no Tasks icon in the sidebar when only unfinished tasks exist, so the page couldn't be reached; fixed in 21a8aec1 and re-checked the same day with that build: after a restart with one unfinished task the icon is there, the page lists it, "drop" empties `tasks.json`. Removing half-written imports, conversions, exports and scrubs not tried (would write to the drive) |
+| **Follow-up** | cleanup after an interrupted import |
 
 ### 2026-10-31 · WiiGames · system notifications (#22)
 
