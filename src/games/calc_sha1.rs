@@ -80,16 +80,14 @@ pub fn calc_sha1(game: Game, control: TaskControl) -> impl Stream<Item = WorkerE
                 "Hash match for {}!  -  SHA1 is well known, your dump is perfect",
                 game.title()
             )),
-            Ok(Verdict::UpdateRemoved) => Err(format!(
-                "Hash mismatch for {}: the dump has no update partition (often removed when \
-                 making a WBFS), so it can't match the disc. The game itself is not affected",
-                game.title()
-            )),
-            Ok(Verdict::Unknown) => Err(format!(
-                "Hash mismatch for {}: not a known good dump. It may be damaged, another version \
-                 or changed otherwise; the hash can't tell which",
-                game.title()
-            )),
+            // the task's title already names the game
+            Ok(Verdict::UpdateRemoved) => Err("Hash mismatch: the dump has no update partition \
+                 (often removed when making a WBFS), so it can't match the disc. The game itself \
+                 is not affected"
+                .to_string()),
+            Ok(Verdict::Unknown) => Err("Hash mismatch: not a known good dump. It may be \
+                 damaged, another version or changed otherwise; the hash can't tell which"
+                .to_string()),
             Err(e) => Err(e.to_string()),
         },
     )
