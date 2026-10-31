@@ -59,8 +59,12 @@ start from `main` and only see what is there, so the update goes to `main` in it
   Retry refuses a game already being imported: pull request **#36** (`claude/no-double-import`),
   open, reviewed, not tried on the Mac.
 - **M1c, copy many**: "Copy all to drive", pull request **#41** (`claude/m1c-copy-many`, M0b
-  session), open; review findings sent to that session (relies on #36 against double queueing,
-  no free-space check, read-only drive checked late).
+  session), open; review findings fixed (free space, read-only drive, unreadable files, game list
+  not loaded). Relies on #36 against queueing a game twice: merge #36 first. The click that writes
+  to WiiGames is untested.
+- **Next on the Mac, in this order**: #36, #41, #13 (again, after the review's changes), #22 (the
+  banner), #11 (3DS); then the long sleep test for #7 and item 3 of "Waiting for the Mac". Each
+  one that works may be merged by Claude when the maintainer says so.
 - **M2b, explain and repair bad dumps** (#26): first step merged (#38). nod's H0–H3 validation
   fails on WBFS as it is (see the roadmap). Open: only the first disc of a multi-disc game is
   hashed.
