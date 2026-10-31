@@ -252,6 +252,23 @@ impl AppState {
                     !on_drive
                 });
 
+                // nor twice into the queue: the same disc picked again, or once more in one pick,
+                // before its import has run
+                let mut queued = self.queued_imports();
+                paths.retain(|entry| {
+                    let target = entry.target();
+                    let again = queued.contains(&target);
+                    if again {
+                        self.notifications.push(Notification::info(format!(
+                            "{} is already being imported",
+                            entry.display_title()
+                        )));
+                    } else {
+                        queued.push(target);
+                    }
+                    !again
+                });
+
                 if picked == 0 {
                     self.notifications
                         .push(Notification::info("No new games selected"));
@@ -336,6 +353,17 @@ impl AppState {
                 Task::none()
             }
             Message::RetryTask(id) => {
+                // the same disc may have been picked again since this import failed
+                if let Some(Job::Import { entry, config, .. }) = self.jobs.get(&id)
+                    && config.mount_point() == self.config.mount_point()
+                    && self.queued_imports().contains(&entry.target())
+                {
+                    self.notifications.push(Notification::info(format!(
+                        "{} is already being imported",
+                        entry.display_title()
+                    )));
+                    return Task::none();
+                }
                 self.tasks.retry(id);
                 self.start_ready_tasks()
             }
