@@ -43,6 +43,136 @@ console, a real drive or a real collection can show.
 
 ## Entries
 
+### 2026-10-31 · WiiGames · a game already on the drive isn't imported again (#33)
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32 |
+| **What** | #33: a disc already in its game's folder is left out of an import |
+| **Who** | Claude on petter1's Mac, the app driven in the background (computer use) |
+| **When** | 2026-10-31, branch `claude/import-keeps-existing-games` (debug build, a temporary test not committed), macOS 27 |
+| **How** | `ImportEntry::is_on_drive` against the real drive for Glacier 3 and Xenoblade Chronicles (split WBFS) on WiiGames, and against WIIRO |
+| **Why** | a dropped game skipped the check and overwrote the game on the drive |
+| **Result** | ⚠️ On WiiGames both are found, on WIIRO neither. Not tried in the window: dropping a file onto the Games page (can't be done from the background) |
+| **Follow-up** | drop a game that is on WiiGames → "… is already on the drive" |
+
+### 2026-10-31 · WiiGames, gamestation · library scan with a source that doesn't answer (#31)
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32; gamestation (ROM source) hung: every read waited, `ls` didn't return |
+| **What** | #31: the library scan gives up a source that reads nothing for 15 s |
+| **Who** | Claude on petter1's Mac, the app driven in the background (computer use) |
+| **When** | 2026-10-31, branch `claude/library-scan-unanswered-source` (debug build), macOS 27 |
+| **How** | Before: `main` 6a7b47d0 left the library at "Scanning…" (the scan thread in `opendir` on gamestation). With #31: app started, `library.json` compared before and after |
+| **Why** | gamestation stopped answering during the tests |
+| **Result** | ✅ After 15–16 s "/Volumes/gamestation doesn't answer: its games are from the last scan", "Scanning…" ends, `library.json` keeps all 3067 entries (3065 on gamestation). A first version lost gamestation's entries from the cache; caught here, fixed before merging, cache restored from a copy |
+| **Follow-up** | none |
+
+### 2026-10-31 · WiiGames · settings with a drive that doesn't answer (#28)
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32 |
+| **What** | #28: loading the settings waits at most 3 s for the selected drive |
+| **Who** | Claude on petter1's Mac, the app driven in the background (computer use) |
+| **When** | 2026-10-31, branch `claude/config-load-slow-drive` (debug build), macOS 27 |
+| **How** | A freshly ad-hoc signed `.app` started with `open`, so macOS's prompt for removable volumes was pending; `sample` of the process |
+| **Why** | before, the window showed "No drive selected" and no sources until the prompt was answered |
+| **Result** | ✅ After about 3 s the title shows WIIGAMES and the library is there; `sample` shows the `read_dir` calls still waiting for the prompt |
+| **Follow-up** | none |
+
+### 2026-10-31 · WiiGames · paused task display (#27)
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32 |
+| **What** | #27: a paused task shows no speed and counts as paused |
+| **Who** | Claude on petter1's Mac, the app driven in the background (computer use) |
+| **When** | 2026-10-31, branch `claude/tasks-paused-display` (debug build), macOS 27 |
+| **How** | Hash of Xenoblade Chronicles, paused on the Tasks page |
+| **Why** | seen in the #10 test: "Paused · … · 106 MiB/s · 32 s left" and "1 task running" |
+| **Result** | ✅ Row "Paused · 330 MiB of 7.93 GiB", bottom bar "1 paused" |
+| **Follow-up** | none |
+
+### 2026-10-31 · WiiGames · Messages page (#24)
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32 |
+| **What** | #24, the Messages page with every message since the start |
+| **Who** | Claude on petter1's Mac, the app driven in the background (computer use) |
+| **When** | 2026-10-31, `claude/m1a-plus-notification-center` 95ff38ed (debug build), macOS 27 |
+| **How** | Two hashes of Glacier 3 (two identical "Hash mismatch"), toast closed, Messages page; "Only warnings and errors", "Clear", "Open log file" |
+| **Why** | #24 waits for the Mac test |
+| **Result** | ✅ One entry "09:11:38 … Hash mismatch for Glacier 3" with "2×", still there after the toast was closed; the filter keeps it; "Clear" → "No messages yet."; "Open log file" opens `log.txt` in TextEdit. Not tried: a mix of info and error messages for the filter, the 1000-entry limit |
+| **Follow-up** | none |
+
+### 2026-10-31 · WiiGames · unfinished tasks after a restart (#13)
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32 |
+| **What** | #13, unfinished tasks are offered again after a restart |
+| **Who** | Claude on petter1's Mac, the app driven in the background (computer use) |
+| **When** | 2026-10-31, `claude/m1a-resume-tasks` c875da5f (debug build), macOS 27 |
+| **How** | Two hash tasks (one running, one waiting), then Quit from the menu; again with a hard kill; restart; Tasks page; drop one, resume one, let it finish; `tasks.json` checked after each step |
+| **Why** | #13 waits for the Mac test |
+| **Result** | ⚠️ `tasks.json` holds both tasks; after Quit and after a kill the app says "2 task(s) weren't finished…" and the Tasks page lists them; drop removes one, resume runs it again, `tasks.json` is `[]` once it ended. **Bug**: no Tasks icon in the sidebar when only unfinished tasks exist, so the page couldn't be reached; fixed in 21a8aec1, not re-checked yet. Removing half-written imports, conversions, exports and scrubs not tried (would write to the drive) |
+| **Follow-up** | re-check after 21a8aec1; cleanup after an interrupted import |
+
+### 2026-10-31 · WiiGames · system notifications (#22)
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32 |
+| **What** | #22, system notifications when a task ends while the window is in the background |
+| **Who** | Claude on petter1's Mac, the app driven in the background (computer use) |
+| **When** | 2026-10-31, local merge of `main` 3935bd8e + #7 b55499ba + #20 864de29a + #22 eb16e17d (debug build, binary started from a terminal, not via the `.app`), macOS 27 |
+| **How** | Hash tasks that ended while the window had no focus |
+| **Why** | #22 waits for the Mac test |
+| **Result** | ⚠️ The notification was sent (window unfocused, no error printed); whether a banner appeared in Notification Center wasn't seen. Tested before the later fix to #22 |
+| **Follow-up** | look at Notification Center with the current branch, started as the `.app` |
+
+### 2026-10-31 · WiiGames · the same message counted (#20)
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32 |
+| **What** | #20, the same message again is counted in one toast |
+| **Who** | Claude on petter1's Mac, the app driven in the background (computer use) |
+| **When** | 2026-10-31, local merge of `main` 3935bd8e + #7 + #20 864de29a + #22 (debug build), macOS 27 |
+| **How** | Two hashes of Glacier 3 queued, both "Hash mismatch" |
+| **Why** | #20 waits for the Mac test |
+| **Result** | ✅ One toast "Check the hash of Glacier 3: Hash mismatch for Glacier 3" with "2×"; `log.txt` has both lines |
+| **Follow-up** | none |
+
+### 2026-10-31 · WiiGames · stay awake while a task runs (#7)
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32 |
+| **What** | #7, the computer is kept awake while data moves |
+| **Who** | Claude on petter1's Mac, the app driven in the background (computer use) |
+| **When** | 2026-10-31, local merge of `main` 3935bd8e + #7 b55499ba + #20 + #22 (debug build), macOS 27 |
+| **How** | Hash of Xenoblade Chronicles; `pgrep caffeinate` and `pmset -g assertions` before, during and after |
+| **Why** | #7 waits for the Mac test |
+| **Result** | ⚠️ `caffeinate -i -w <app pid>` only while the task runs (PreventUserIdleSystemSleep), none before, gone after. The long run (Mac left alone until it would sleep) not done: Amphetamine and Claude hold the same assertion on this Mac |
+| **Follow-up** | long run with those apps closed |
+
+### 2026-10-31 · WiiGames · convert, export, scrub and hash as tasks, part 1 (#10)
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32 |
+| **What** | #10 on `main`, item 3 of "Waiting for the Mac": the parts that need no dialog and no Wii |
+| **Who** | Claude on petter1's Mac, the app driven in the background (computer use) |
+| **When** | 2026-10-31, `main` 3935bd8e (debug build), macOS 27 |
+| **How** | Hash tasks on WiiGames: Xenoblade Chronicles (split WBFS, 7.93 GiB), GoldenEye 007, Glacier 3; one waiting task moved earlier; the running one cancelled; pause tried |
+| **Why** | #10 was merged before the test on real hardware |
+| **Result** | ⚠️ Second and third hash wait; "Earlier" moves Glacier 3 before GoldenEye; cancelling the running hash → "Cancelled", the next one starts; a split WBFS is read whole. Every hash: "Hash mismatch" (WBFS dumps; see #38). Pause: the background clicks fired twice (Pause then Resume, seen in a debug log), so pause by hand is still open; while paused the row kept speed and time left (fixed in #27). Not tried: export, convert to RVZ (file dialogs), scrub (needs the Wii), a hash match |
+| **Follow-up** | item 3 of "Waiting for the Mac": export, convert, scrub, pause by hand, a known good dump |
+
 ### 2026-10-31 · Mac · own icon and screenshot
 
 | | |
