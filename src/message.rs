@@ -6,6 +6,7 @@ use crate::{
     consoles::{ConsoleEntry, Drive, InstalledTitle},
     games::{ImportEntry, game::Game, games_state::GamesState},
     homebrew::{homebrew_app::HomebrewApp, homebrew_state::HomebrewState},
+    jobs::{Job, SavedTask},
     library::{LibraryItem, Platform},
     link::discovery::Found,
     notifications::notification::Notification,
@@ -62,6 +63,12 @@ pub enum Message {
     ClearMessages,
     SetMessagesProblemsOnly(bool),
     SearchMessages(String),
+    GotUnfinishedTasks(Vec<SavedTask>),
+    /// One unfinished task from before the restart, by its place in the list; `None`: all
+    ResumeUnfinished(Option<usize>),
+    DropUnfinished(Option<usize>),
+    /// Each task with its job read again, or why that failed (it is then listed again)
+    RestoredTasks(Vec<(SavedTask, Result<Job, String>)>),
     ToggleAnimationState,
     ReloadCover(GameID),
     ReloadOscIcon(usize),

@@ -41,6 +41,7 @@ impl AppState {
         if let Some(e) = self.keep_awake.set(self.is_moving_data()) {
             self.notifications.push(Notification::warning(e));
         }
+        self.save_unfinished_tasks();
 
         task
     }
@@ -354,6 +355,38 @@ impl AppState {
             Message::ClearTaskHistory => {
                 self.clear_task_history();
                 Task::none()
+            }
+            Message::GotUnfinishedTasks(saved) => {
+                if !saved.is_empty() {
+                    self.notifications.push(Notification::info(format!(
+                        "{} task(s) weren't finished when the app was closed: resume or drop them on the Tasks page",
+                        saved.len()
+                    )));
+                }
+                self.unfinished = Some(saved);
+                Task::none()
+            }
+            Message::ResumeUnfinished(index) => {
+                let saved = self.take_unfinished(index);
+                self.resume_unfinished(saved)
+            }
+            Message::DropUnfinished(index) => {
+                let saved = self.take_unfinished(index);
+                self.drop_unfinished(saved)
+            }
+            Message::RestoredTasks(restored) => {
+                for (task, result) in restored {
+                    match result {
+                        Ok(job) => self.add_job(job),
+                        Err(reason) => {
+                            // e.g. the drive isn't connected: kept, to resume or drop later
+                            self.notifications
+                                .push(Notification::error(format!("{}: {reason}", task.title)));
+                            self.unfinished.get_or_insert_default().push(task);
+                        }
+                    }
+                }
+                self.start_ready_tasks()
             }
             Message::ToggleAnimationState => {
                 if self.tasks.running_count() > 0 {

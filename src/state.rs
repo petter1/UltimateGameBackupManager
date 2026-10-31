@@ -6,12 +6,12 @@ use crate::{
     consoles::{self, ConsolesState},
     games::{covers::download_ui_covers, game::Game, games_state::GamesState},
     homebrew::{self, homebrew_state::HomebrewState},
-    jobs::Job,
+    jobs::{self, Job, SavedTask},
     library::LibraryState,
     message::Message,
     notifications::{notification::Notification, notification_list::NotificationList},
     osc::{self, osc_state::OscState},
-    tasks::{TaskId, TaskManager},
+    tasks::{TaskId, TaskManager, TaskState},
     toolbox::{ToolContext, ToolboxItem},
     ui::{modals::Modal, pages::Page, theme},
     util::{self, drive_state::DriveState, keep_awake::KeepAwake, updates},
@@ -51,6 +51,11 @@ pub struct AppState {
     pub current_modal: Option<Modal>,
     pub tasks: TaskManager,
     pub jobs: HashMap<TaskId, Job>,
+    /// Tasks not finished when the app was closed, to resume or drop; `None` until they are
+    /// loaded, so the empty list of a fresh start doesn't overwrite them.
+    pub unfinished: Option<Vec<SavedTask>>,
+    /// What was written to `tasks.json` last
+    saved_tasks: String,
     pub osc_contents: OscState,
     pub animation_state: bool,
     pub new_version: Option<Version>,
@@ -78,6 +83,8 @@ impl AppState {
                     current_modal: None,
                     tasks: TaskManager::new(),
                     jobs: HashMap::new(),
+                    unfinished: None,
+                    saved_tasks: String::new(),
                     osc_contents: OscState::NotLoaded,
                     animation_state: false,
                     new_version: None,
@@ -91,6 +98,7 @@ impl AppState {
                     Task::perform(Config::load(data_dir), Message::GotConfig),
                     Task::perform(OscState::load(data_dir, false), Message::GotOscContents),
                     Task::perform(consoles::load(data_dir), Message::GotKnownConsoles),
+                    Task::perform(jobs::load_unfinished(data_dir), Message::GotUnfinishedTasks),
                     Task::perform(updates::check(), |res| match res {
                         Ok(Some(version)) => Message::GotUpdate(version),
                         Ok(None) => Message::NoOp,
@@ -288,6 +296,86 @@ impl AppState {
                     .get(&task.id())
                     .is_some_and(|job| job.scrubs(game_dir))
         })
+    }
+
+    /// Saves the open tasks if they changed, so they can be resumed after the app was closed in
+    /// the middle of them.
+    pub fn save_unfinished_tasks(&mut self) {
+        let Some(unfinished) = &self.unfinished else {
+            return;
+        };
+
+        let open = self
+            .tasks
+            .iter()
+            .filter(|task| !task.state().is_finished())
+            .filter_map(|task| {
+                let job = self.jobs.get(&task.id())?;
+                Some(SavedTask {
+                    title: task.title().to_string(),
+                    job: job.to_saved(),
+                    leftovers: (*task.state() != TaskState::Waiting).then(|| job.leftovers()),
+                })
+            });
+        let all: Vec<SavedTask> = unfinished.iter().cloned().chain(open).collect();
+
+        let Ok(json) = serde_json::to_string_pretty(&all) else {
+            return;
+        };
+        if json == self.saved_tasks {
+            return;
+        }
+
+        match jobs::save_unfinished_blocking(self.data_dir, &json) {
+            Ok(()) => self.saved_tasks = json,
+            Err(e) => eprintln!("WARN: Could not save the tasks: {e}"),
+        }
+    }
+
+    /// Resumes unfinished tasks from before the restart, in their order: first removes what they
+    /// half-wrote, then reads their games again.
+    pub fn resume_unfinished(&mut self, saved: Vec<SavedTask>) -> Task<Message> {
+        Task::perform(
+            async move {
+                let mut restored = Vec::with_capacity(saved.len());
+                for task in saved {
+                    if let Some(leftovers) = task.leftovers_to_remove().cloned() {
+                        smol::unblock(move || leftovers.remove_blocking()).await;
+                    }
+                    let job = task.job.clone().restore().await;
+                    restored.push((task, job));
+                }
+                restored
+            },
+            Message::RestoredTasks,
+        )
+    }
+
+    /// Takes one unfinished task from before the restart out of the list, or all of them.
+    pub fn take_unfinished(&mut self, index: Option<usize>) -> Vec<SavedTask> {
+        let Some(unfinished) = &mut self.unfinished else {
+            return Vec::new();
+        };
+
+        match index {
+            Some(index) if index < unfinished.len() => vec![unfinished.remove(index)],
+            Some(_) => Vec::new(),
+            None => std::mem::take(unfinished),
+        }
+    }
+
+    /// Drops unfinished tasks from before the restart and removes what they half-wrote.
+    pub fn drop_unfinished(&mut self, saved: Vec<SavedTask>) -> Task<Message> {
+        Task::perform(
+            smol::unblock(move || {
+                for task in &saved {
+                    if let Some(leftovers) = task.leftovers_to_remove() {
+                        leftovers.remove_blocking();
+                    }
+                }
+            }),
+            |()| Message::NoOp,
+        )
     }
 
     /// Removes the finished tasks and their jobs.

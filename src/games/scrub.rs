@@ -16,24 +16,26 @@ use nod::{
 use smol::stream::Stream;
 use split_write::SplitWriter;
 use std::{
-    ffi::OsStr,
     io::{BufWriter, Write},
-    path::Path,
+    path::{Path, PathBuf},
 };
+
+/// Where the scrubbed copy of the game is written, next to its folder.
+pub fn tmp_game_dir(game: &Game) -> PathBuf {
+    let game_dir_name = game
+        .path()
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy();
+    game.path().with_file_name(format!("{game_dir_name} SCRUB"))
+}
 
 /// Writes the scrubbed game next to the game's folder and swaps the two once it is complete; on
 /// failure or cancel only the unfinished copy is removed, the game stays as it was.
 fn perform_blocking(game: &Game, control: &TaskControl, reporter: &mut Reporter) -> Result<()> {
     let disc_path = game.get_disc_path_blocking().context("disc not found")?;
 
-    let game_dir_name = game
-        .path()
-        .file_name()
-        .and_then(OsStr::to_str)
-        .context("invalid path")?;
-
-    let tmp_game_dir_name = format!("{game_dir_name} SCRUB");
-    let tmp_game_dir = game.path().with_file_name(tmp_game_dir_name);
+    let tmp_game_dir = tmp_game_dir(game);
     std::fs::create_dir(&tmp_game_dir)?;
 
     if let Err(e) = write_scrubbed(game, &disc_path, &tmp_game_dir, control, reporter) {

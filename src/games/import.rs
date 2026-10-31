@@ -10,7 +10,7 @@ use crate::{
     tasks::{self, Reporter, TaskControl, WorkerEvent},
     util::{drive_state::DriveState, misc::OPTIMAL_THREADS},
 };
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail};
 use nod::{
     common::Format,
     read::{DiscOptions, DiscReader},
@@ -46,19 +46,14 @@ fn perform_blocking(
 
     reporter.progress(0, None, || format!("Opening {filename}"));
 
-    let parent_dir_name = if entry.meta().is_wii() {
-        "wbfs"
-    } else {
-        "games"
-    };
+    // checked again here, not only when the game was picked: something may have put the game on
+    // the drive since (an import of it that ran first, a copy by hand), and this import would
+    // overwrite it, and the cleanup of an unfinished import after a restart would remove it
+    if entry.is_on_drive(config.mount_point()) {
+        bail!("{} is already on the drive", entry.display_title());
+    }
 
-    let game_dir = config
-        .mount_point()
-        .join(parent_dir_name)
-        .join(make_game_dir_name(
-            entry.meta().game_id(),
-            entry.meta().game_title(),
-        ));
+    let game_dir = game_dir(entry, config.mount_point());
 
     // the second disc of a game goes into the folder of the first one
     let dir_existed = game_dir.exists();
@@ -220,6 +215,33 @@ fn write_game(
     }
 
     Ok(())
+}
+
+/// The folder on the drive the game of `entry` is imported into.
+pub fn game_dir(entry: &ImportEntry, mount_point: &Path) -> PathBuf {
+    let parent_dir_name = if entry.meta().is_wii() {
+        "wbfs"
+    } else {
+        "games"
+    };
+
+    mount_point.join(parent_dir_name).join(make_game_dir_name(
+        entry.meta().game_id(),
+        entry.meta().game_title(),
+    ))
+}
+
+/// How the names of the files written for `entry` begin, whatever the format and split:
+/// `RMGE01.` for a Wii game, `game.` or `disc2.` for a GameCube disc.
+pub fn file_prefix(entry: &ImportEntry) -> String {
+    if entry.meta().is_wii() {
+        format!("{}.", entry.meta().game_id())
+    } else {
+        match entry.meta().disc_number() {
+            0 => "game.".to_string(),
+            n => format!("disc{}.", n + 1),
+        }
+    }
 }
 
 /// Imports a game to the drive as a task: progress in bytes, pause and cancel through `control`.

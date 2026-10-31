@@ -16,6 +16,10 @@ use iced::{
 use lucide_icons::Icon;
 
 pub fn sidebar(state: &AppState) -> Element<'_, Message> {
+    // the unfinished tasks from before a restart are only on the Tasks page, so it needs the icon
+    let has_tasks = state.tasks.iter().next().is_some()
+        || state.unfinished.as_ref().is_some_and(|u| !u.is_empty());
+
     column![
         tooltip(
             my_sidebar_button(&[Icon::Gamepad2])
@@ -71,7 +75,7 @@ pub fn sidebar(state: &AppState) -> Element<'_, Message> {
                 tooltip::Position::Right,
             )
         }),
-        state.tasks.iter().next().is_some().then(|| {
+        has_tasks.then(|| {
             let tasks_icon = if state.animation_state {
                 Icon::ArrowUp10
             } else {

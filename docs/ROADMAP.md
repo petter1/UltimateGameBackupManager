@@ -35,6 +35,12 @@ each item is ticked off here (and gets its test log entry) when done.
    scrub, pause by hand.
 4. **Every later M1a and M1a+ pull request**: try it on the Mac before merging (the stay-awake
    one with a long import and the Mac left alone until it would sleep).
+5. **M1a, unfinished tasks after a restart** (#13): start two
+   imports to WiiGames, quit the app (⌘Q) while the first one runs. Start again: a notification,
+   and both are listed on the Tasks page. Drop the first: its half-written files in `wbfs/` or
+   `games/` are gone. Resume the second: it imports completely. Also quit during a scrub and
+   resume it (the game must still start in USB Loader GX), and start once with WiiGames
+   unplugged: resuming fails with "is not connected" and the task stays listed. Test log entry.
 
 ## How the app is meant to work
 
@@ -97,8 +103,11 @@ Each milestone ends in something usable. They are in the planned order; sizes ar
    2026-10-30): `src/util/keep_awake.rs`, held while `tasks.is_busy()` (a paused task lets go).
    Tried on the Mac 2026-10-31: `caffeinate` runs only while a task runs; the long sleep test
    (item 4 in "Waiting for the Mac") is still due.
-5. **Unfinished tasks after a restart**: listed again, to resume or drop. Split off from 3,
-   which was big enough; needs the jobs saved in the data folder.
+5. **Unfinished tasks after a restart** (#13, waiting for the Mac):
+   the open tasks are kept in `tasks.json` in the data folder; after a restart they are listed on
+   the Tasks page, to resume (from the beginning) or drop. What a task half-wrote before the app
+   was closed is removed first. Installs on a console (#11) aren't saved yet: whichever of the
+   two is merged second adds `SavedJob::Install`.
 
 Every longer action – import, copy to a drive, install on a console, convert, export, scrub,
 checksums, downloads, scans, later unpacking and injecting – becomes a **task** in one task manager.

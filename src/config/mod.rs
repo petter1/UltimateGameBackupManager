@@ -118,6 +118,18 @@ impl Config {
         Self { path, contents }
     }
 
+    /// A copy of the settings for a task that was saved before a restart; it is never written.
+    pub fn from_contents(contents: ConfigContents) -> Self {
+        Self {
+            path: PathBuf::new(),
+            contents,
+        }
+    }
+
+    pub fn contents(&self) -> &ConfigContents {
+        &self.contents
+    }
+
     async fn write_inner(&self) -> Result<()> {
         let contents = serde_json::to_string_pretty(&self.contents)?;
         fs::write(&self.path, contents).await?;
