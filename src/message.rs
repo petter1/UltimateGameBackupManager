@@ -97,6 +97,7 @@ pub enum Message {
     AddRomSource(PathBuf),
     RemoveRomSource(PathBuf),
     CopyToDrive(PathBuf),
+    CopyShownToDrive,
     GotDrives(Vec<Drive>),
     OpenDrive(PathBuf, Page),
     ForgetDrive(PathBuf),

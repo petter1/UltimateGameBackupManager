@@ -199,6 +199,9 @@ what the console expects.
   at a time; files over 4 GiB are always split for FAT32 (`.wbfs` + `.wbf1` …), as the drive import
   already does. Found when copying the WBFS backup to the freshly formatted WiiGames drive, where
   the Finder refuses files over 4 GiB.
+- First step (pull request `claude/m1c-copy-many`): "Copy all to drive" in the library's title bar
+  copies the Wii and GameCube discs shown (so a platform, or what the search finds), skipping those
+  already on the drive and those only in the cloud. Still open: a selection, a whole source folder.
 
 ### M1d · SD cards: manage, back up, set up (M)
 

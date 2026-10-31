@@ -4,7 +4,7 @@
 use crate::{
     config::message::ConfigMessage,
     consoles,
-    games::{ImportEntry, games_state::GamesState, txtcodes::download_cheats},
+    games::{ImportEntry, games_state::GamesState, keep_valid_games, txtcodes::download_cheats},
     homebrew::homebrew_state::HomebrewState,
     jobs::Job,
     library,
@@ -668,6 +668,36 @@ impl AppState {
                     Err(e) => Message::Notify(e.into()),
                 })
             }
+            Message::CopyShownToDrive => {
+                if self.config.mount_point().as_os_str().is_empty() {
+                    return Task::done(Message::Notify(Notification::warning(
+                        "Select a drive in My Consoles first",
+                    )));
+                }
+                let (in_cloud, paths): (Vec<_>, Vec<_>) = self
+                    .library
+                    .shown_drive_games()
+                    .partition(|item| item.in_cloud);
+                if !in_cloud.is_empty() {
+                    self.notifications.push(Notification::info(format!(
+                        "{} only in the cloud, not copied: download them first",
+                        games_count(in_cloud.len())
+                    )));
+                }
+                let paths = paths
+                    .into_iter()
+                    .map(|item| item.path.clone())
+                    .collect::<Vec<_>>();
+                let existing_ids = match &self.games {
+                    GamesState::Loaded(games) => games.get_all_game_ids().collect::<Vec<_>>(),
+                    _ => Vec::new(),
+                };
+
+                Task::perform(
+                    async move { keep_valid_games(smol::stream::iter(paths), &existing_ids).await },
+                    Message::PickedGames,
+                )
+            }
             Message::GotUpdate(new_version) => {
                 self.new_version = Some(new_version);
                 Task::none()
@@ -693,5 +723,13 @@ impl AppState {
                 self.start_ready_tasks()
             }
         }
+    }
+}
+
+fn games_count(n: usize) -> String {
+    if n == 1 {
+        "1 game".to_string()
+    } else {
+        format!("{n} games")
     }
 }
