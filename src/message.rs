@@ -60,6 +60,9 @@ pub enum Message {
     MoveTask(TaskId, bool),
     RetryTask(TaskId),
     ClearTaskHistory,
+    ClearMessages,
+    SetMessagesProblemsOnly(bool),
+    SearchMessages(String),
     GotUnfinishedTasks(Vec<SavedTask>),
     /// One unfinished task from before the restart, by its place in the list; `None`: all
     ResumeUnfinished(Option<usize>),

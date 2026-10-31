@@ -14,7 +14,7 @@ use crate::{
     tasks::{TaskId, TaskManager, TaskState},
     toolbox::{ToolContext, ToolboxItem},
     ui::{modals::Modal, pages::Page, theme},
-    util::{self, drive_state::DriveState, updates},
+    util::{self, drive_state::DriveState, keep_awake::KeepAwake, updates},
 };
 use anyhow::{Context, Result};
 use iced::{
@@ -61,6 +61,11 @@ pub struct AppState {
     pub new_version: Option<Version>,
     pub consoles: ConsolesState,
     pub library: LibraryState,
+    /// The Messages page shows only warnings and errors.
+    pub messages_problems_only: bool,
+    /// Text the Messages page filters by, case-insensitive.
+    pub messages_search: String,
+    pub keep_awake: KeepAwake,
 }
 
 impl AppState {
@@ -85,6 +90,9 @@ impl AppState {
                     new_version: None,
                     consoles: ConsolesState::default(),
                     library: LibraryState::default(),
+                    messages_problems_only: false,
+                    messages_search: String::new(),
+                    keep_awake: KeepAwake::default(),
                 },
                 Task::batch([
                     Task::perform(Config::load(data_dir), Message::GotConfig),
@@ -130,6 +138,11 @@ impl AppState {
                 .into_iter()
                 .map(|addr| Task::done(Message::LoadConsoleTitles(addr))),
         )
+    }
+
+    /// Whether data moves right now, so the computer should stay awake.
+    pub fn is_moving_data(&self) -> bool {
+        self.tasks.is_busy()
     }
 
     pub fn selected_drive(&self) -> Option<&consoles::Drive> {
@@ -285,15 +298,9 @@ impl AppState {
         })
     }
 
-    /// Handles a message, then saves the open tasks if they changed, so they can be resumed
-    /// after the app was closed in the middle of them.
-    pub fn handle(&mut self, message: Message) -> Task<Message> {
-        let task = self.update(message);
-        self.save_unfinished_tasks();
-        task
-    }
-
-    fn save_unfinished_tasks(&mut self) {
+    /// Saves the open tasks if they changed, so they can be resumed after the app was closed in
+    /// the middle of them.
+    pub fn save_unfinished_tasks(&mut self) {
         let Some(unfinished) = &self.unfinished else {
             return;
         };

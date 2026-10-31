@@ -33,9 +33,9 @@ each item is ticked off here (and gets its test log entry) when done.
    Partly done 2026-10-31 (see the test log): waiting, moving earlier, cancelling and hashing
    work, and a known good dump (Worms 3D) gives "Hash match"; still open: export, convert,
    scrub, pause by hand.
-4. **Every later M1a pull request**: try it on the Mac before merging (the stay-awake one with a
-   long import and the Mac left alone until it would sleep).
-5. **M1a, unfinished tasks after a restart** (branch `claude/m1a-resume-tasks`): start two
+4. **Every later M1a and M1a+ pull request**: try it on the Mac before merging (the stay-awake
+   one with a long import and the Mac left alone until it would sleep).
+5. **M1a, unfinished tasks after a restart** (#13): start two
    imports to WiiGames, quit the app (⌘Q) while the first one runs. Start again: a notification,
    and both are listed on the Tasks page. Drop the first: its half-written files in `wbfs/` or
    `games/` are gone. Resume the second: it imports completely. Also quit during a scrub and
@@ -99,8 +99,11 @@ Each milestone ends in something usable. They are in the planned order; sizes ar
 3. **Convert, export, scrub, checksums as tasks** (#10, cloud session 2026-10-30, merged):
    `LongOperations` is removed; waiting tasks can be moved earlier
    or later on the Tasks page. Still to try on the Mac (test log).
-4. **Stay awake** while a task is running (macOS, Windows, Linux).
-5. **Unfinished tasks after a restart** (branch `claude/m1a-resume-tasks`, waiting for the Mac):
+4. **Stay awake** while a task is running (macOS, Windows, Linux) (#7, cloud session
+   2026-10-30): `src/util/keep_awake.rs`, held while `tasks.is_busy()` (a paused task lets go).
+   Tried on the Mac 2026-10-31: `caffeinate` runs only while a task runs; the long sleep test
+   (item 4 in "Waiting for the Mac") is still due.
+5. **Unfinished tasks after a restart** (#13, waiting for the Mac):
    the open tasks are kept in `tasks.json` in the data folder; after a restart they are listed on
    the Tasks page, to resume (from the beginning) or drop. What a task half-wrote before the app
    was closed is removed first. Installs on a console (#11) aren't saved yet: whichever of the
@@ -144,6 +147,16 @@ TWBM's notifications are toasts in the window that pile up (one per error, e.g. 
 - **The log in the same place**: choose a level – errors, warnings, info, debug – and the center
   shows the log lines of that level next to the notifications, searchable and exportable as a file
   for bug reports. The log is also written to a file in the data folder.
+
+First step (#20, 2026-10-31): the same message again is counted in one toast ("245×") instead of
+shown again; the log file (`log.txt`, already there) gets every one. Works on the Mac
+(2026-10-31); test log entry still to write.
+
+Messages page (#24, 2026-10-31, on top of the first step): every message since the start (the
+last 1000; runs of the same one are one entry), newest first, a filter "Only warnings and
+errors", a search field, "Open log file". Works on the Mac (2026-10-31), the search not tried
+yet. Still open: the source (task, console, drive) with a link to it, grouping different errors
+of one task, log levels with debug lines, export.
 
 
 ### M1 · Install on the 3DS over Wi-Fi (M)

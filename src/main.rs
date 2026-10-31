@@ -118,7 +118,7 @@ pub fn main() -> iced::Result {
         ..Default::default()
     };
 
-    iced::application(AppState::boot(data_dir), AppState::handle, ui::root::view)
+    iced::application(AppState::boot(data_dir), AppState::update, ui::root::view)
         .settings(settings)
         .window(window)
         .title(title)

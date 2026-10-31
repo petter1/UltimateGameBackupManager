@@ -36,6 +36,17 @@ fn writes_to_drive(message: &Message) -> bool {
 
 impl AppState {
     pub fn update(&mut self, message: Message) -> Task<Message> {
+        let task = self.handle(message);
+
+        if let Some(e) = self.keep_awake.set(self.is_moving_data()) {
+            self.notifications.push(Notification::warning(e));
+        }
+        self.save_unfinished_tasks();
+
+        task
+    }
+
+    fn handle(&mut self, message: Message) -> Task<Message> {
         if writes_to_drive(&message)
             && let Some(drive) = self.selected_drive().filter(|drive| drive.read_only())
         {
@@ -328,6 +339,18 @@ impl AppState {
             Message::RetryTask(id) => {
                 self.tasks.retry(id);
                 self.start_ready_tasks()
+            }
+            Message::ClearMessages => {
+                self.notifications.clear_history();
+                Task::none()
+            }
+            Message::SearchMessages(search) => {
+                self.messages_search = search;
+                Task::none()
+            }
+            Message::SetMessagesProblemsOnly(only) => {
+                self.messages_problems_only = only;
+                Task::none()
             }
             Message::ClearTaskHistory => {
                 self.clear_task_history();
