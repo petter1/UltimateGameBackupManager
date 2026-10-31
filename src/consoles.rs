@@ -19,6 +19,7 @@ use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
+    sync::Mutex,
     time::Duration,
 };
 use which_fs::FsKind;
@@ -128,24 +129,14 @@ pub struct DriveSpace {
 }
 
 impl Drive {
-    fn load_label(path: PathBuf) -> Self {
-        let label = path
-            .file_name()
+    fn label(path: &Path) -> String {
+        path.file_name()
             .unwrap_or(path.as_os_str())
             .to_string_lossy()
-            .into_owned();
-
-        Self {
-            path,
-            label,
-            space: None,
-            answering: true,
-        }
+            .into_owned()
     }
 
     fn load(path: PathBuf) -> Self {
-        let label = Self::load_label(path.clone()).label;
-
         let space = path
             .is_dir()
             .then(|| fs4::statvfs(&path).ok())
@@ -159,8 +150,8 @@ impl Drive {
             });
 
         Self {
+            label: Self::label(&path),
             path,
-            label,
             space,
             answering: true,
         }
@@ -168,9 +159,10 @@ impl Drive {
 
     fn not_answering(path: PathBuf) -> Self {
         Self {
+            label: Self::label(&path),
+            path,
             space: None,
             answering: false,
-            ..Self::load_label(path)
         }
     }
 
@@ -201,20 +193,51 @@ impl Drive {
 /// How long reading a drive may take before it counts as not answering.
 const DRIVE_LOAD_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// The drives whose reading thread hasn't finished yet, so a hung disk gets one stuck thread,
+/// not a new one on every refresh.
+static DRIVES_LOADING: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+
+/// Takes a drive off [`DRIVES_LOADING`] when its thread ends, also if it panics.
+struct LoadingDrive(PathBuf);
+
+impl LoadingDrive {
+    /// None while an earlier thread is still reading this drive
+    fn start(path: &Path) -> Option<Self> {
+        let mut loading = DRIVES_LOADING.lock().unwrap_or_else(|e| e.into_inner());
+        if loading.iter().any(|p| p == path) {
+            return None;
+        }
+        loading.push(path.to_path_buf());
+        Some(Self(path.to_path_buf()))
+    }
+}
+
+impl Drop for LoadingDrive {
+    fn drop(&mut self) {
+        let mut loading = DRIVES_LOADING.lock().unwrap_or_else(|e| e.into_inner());
+        loading.retain(|p| p != &self.0);
+    }
+}
+
 /// Reads every drive on its own thread, so one hung disk doesn't hold up the list: a drive that
-/// doesn't answer in [`DRIVE_LOAD_TIMEOUT`] is shown as such (its thread is left to finish).
+/// doesn't answer in [`DRIVE_LOAD_TIMEOUT`] is shown as such (its thread is left to finish), and
+/// it isn't read again until that thread has finished.
 pub async fn load_drives(paths: Vec<PathBuf>) -> Vec<Drive> {
     let (sender, receiver) = smol::channel::unbounded();
     for (index, path) in paths.iter().cloned().enumerate() {
+        let Some(loading) = LoadingDrive::start(&path) else {
+            continue;
+        };
         let sender = sender.clone();
         std::thread::spawn(move || {
-            let _ = sender.send_blocking((index, Drive::load(path)));
+            let drive = Drive::load(path);
+            drop(loading);
+            let _ = sender.send_blocking((index, drive));
         });
     }
     drop(sender);
 
     let mut drives: Vec<Option<Drive>> = vec![None; paths.len()];
-    let deadline = smol::Timer::after(DRIVE_LOAD_TIMEOUT);
     let collect = async {
         while let Ok((index, drive)) = receiver.recv().await {
             drives[index] = Some(drive);
@@ -222,7 +245,7 @@ pub async fn load_drives(paths: Vec<PathBuf>) -> Vec<Drive> {
     };
     collect
         .or(async {
-            deadline.await;
+            smol::Timer::after(DRIVE_LOAD_TIMEOUT).await;
         })
         .await;
 
@@ -420,6 +443,21 @@ mod tests {
         );
         assert!(drives[0].space.is_none() && drives[0].answering);
         assert!(drives[1].space.is_some() && drives[1].answering);
+    }
+
+    #[test]
+    fn a_drive_still_being_read_is_not_read_again() {
+        let here = tempfile::tempdir().unwrap();
+        let path = here.path().to_path_buf();
+
+        let earlier = LoadingDrive::start(&path).unwrap();
+        assert!(LoadingDrive::start(&path).is_none());
+        let drives = smol::block_on(load_drives(vec![path.clone()]));
+        assert!(!drives[0].answering);
+
+        drop(earlier);
+        let drives = smol::block_on(load_drives(vec![path]));
+        assert!(drives[0].answering);
     }
 
     #[test]
