@@ -103,6 +103,7 @@ pub enum Message {
     CloseConsole,
     GotConsoleTitles(SocketAddr, Result<Vec<InstalledTitle>, String>),
     FileDropped(PathBuf),
+    WindowFocused(bool),
     GotUpdatePartitionCheckResult(bool),
     AskConfirmScrub(Game),
     Scrub(Game),

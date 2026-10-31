@@ -40,6 +40,10 @@ impl Config {
                 self.contents.remove_sources_apps = remove;
                 self.write()
             }
+            ConfigMessage::SetSystemNotifications(on) => {
+                self.contents.system_notifications = on;
+                self.write()
+            }
             ConfigMessage::SetScrubUpdatePartition(scrub) => {
                 self.contents.scrub_update_partition = scrub;
                 self.write()

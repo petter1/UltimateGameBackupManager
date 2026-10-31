@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   progress bars, pause, cancel and retry; several exports can wait in line, and waiting tasks can
   be moved earlier or later. A cancelled conversion or export removes its half-written file; a
   cancelled scrub leaves the game as it was.
+- 🔔 While the window is in the background, the system tells you when a task is done or failed
+  and when an update is ready (macOS Notification Center, Windows toasts, Linux notifications).
+  Can be turned off in the settings.
 
 ## [v6.1.9] - 2026-10-21
 

@@ -7,5 +7,6 @@ pub mod fs;
 pub mod http;
 pub mod misc;
 pub mod sha1_list;
+pub mod system_notification;
 pub mod updates;
 pub mod wiiload;
