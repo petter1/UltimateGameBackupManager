@@ -137,6 +137,12 @@ First step (`claude/m1a-plus-group-notifications`, 2026-10-31): the same message
 in one toast ("245×") instead of shown again; the log file (`log.txt`, already there) gets every
 one. To try on the Mac, e.g. an import onto the read-only disk image.
 
+Messages page (`claude/m1a-plus-notification-center`, 2026-10-31, on top of the first step):
+every message since the start (the last 1000; runs of the same one are one entry), newest
+first, a filter "Only warnings and errors", "Open log file". Still open: the source (task,
+console, drive) with a link to it, grouping different errors of one task, log levels with debug
+lines, search, export.
+
 
 ### M1 · Install on the 3DS over Wi-Fi (M)
 

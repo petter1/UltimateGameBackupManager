@@ -59,6 +59,8 @@ pub enum Message {
     MoveTask(TaskId, bool),
     RetryTask(TaskId),
     ClearTaskHistory,
+    ClearMessages,
+    SetMessagesProblemsOnly(bool),
     ToggleAnimationState,
     ReloadCover(GameID),
     ReloadOscIcon(usize),

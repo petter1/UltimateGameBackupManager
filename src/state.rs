@@ -56,6 +56,8 @@ pub struct AppState {
     pub new_version: Option<Version>,
     pub consoles: ConsolesState,
     pub library: LibraryState,
+    /// The Messages page shows only warnings and errors.
+    pub messages_problems_only: bool,
 }
 
 impl AppState {
@@ -78,6 +80,7 @@ impl AppState {
                     new_version: None,
                     consoles: ConsolesState::default(),
                     library: LibraryState::default(),
+                    messages_problems_only: false,
                 },
                 Task::batch([
                     Task::perform(Config::load(data_dir), Message::GotConfig),
