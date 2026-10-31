@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 💾 A drive that doesn't answer (a hung disk, or macOS still asking for access) no longer
   empties the drive list in My Consoles: each drive is read on its own, and one that takes more
   than 5 seconds says "Doesn't answer".
+- 🔔 While the window is in the background, the system tells you when a task is done or failed
+  and when an update is ready (macOS Notification Center, Windows toasts, Linux notifications).
+  Can be turned off in the settings.
 
 ## [v6.1.9] - 2026-10-21
 

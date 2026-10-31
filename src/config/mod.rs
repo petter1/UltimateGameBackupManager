@@ -75,6 +75,9 @@ pub struct ConfigContents {
 
     #[serde(default = "system_language")]
     preferred_language: PreferredLanguage,
+
+    #[serde(default = "yes")]
+    system_notifications: bool,
 }
 
 /// How long loading the settings waits for the selected drive to answer.
@@ -199,6 +202,12 @@ impl Config {
 
     #[must_use]
     #[inline]
+    pub fn system_notifications(&self) -> bool {
+        self.contents.system_notifications
+    }
+
+    #[must_use]
+    #[inline]
     pub fn mount_point(&self) -> &Path {
         &self.contents.mount_point
     }
@@ -302,6 +311,7 @@ impl Default for ConfigContents {
             show_gc: true,
             known_drives: Vec::new(),
             preferred_language: system_language(),
+            system_notifications: true,
         }
     }
 }

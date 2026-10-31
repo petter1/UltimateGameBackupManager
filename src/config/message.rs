@@ -22,6 +22,7 @@ pub enum ConfigMessage {
     SetWiiOutputFormat(Format),
     SetGcOutputFormat(Format),
     SetPreferredLanguage(PreferredLanguage),
+    SetSystemNotifications(bool),
     NewMountPoint,
     Write,
     Written(Result<(), String>),

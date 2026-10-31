@@ -61,6 +61,8 @@ pub struct AppState {
     /// Text the Messages page filters by, case-insensitive.
     pub messages_search: String,
     pub keep_awake: KeepAwake,
+    /// Whether the window has the focus; system notifications only come while it hasn't.
+    pub window_focused: bool,
 }
 
 impl AppState {
@@ -86,6 +88,8 @@ impl AppState {
                     messages_problems_only: false,
                     messages_search: String::new(),
                     keep_awake: KeepAwake::default(),
+                    // the window reports Focused once it has the focus; one opened in the background never does
+                    window_focused: false,
                 },
                 Task::batch([
                     Task::perform(Config::load(data_dir), Message::GotConfig),
@@ -103,12 +107,17 @@ impl AppState {
 
     pub fn subscription(&self) -> Subscription<Message> {
         Subscription::batch([
-            iced::event::listen_with(|event, _status, _id| {
-                if let iced::Event::Window(iced::window::Event::FileDropped(path)) = event {
+            iced::event::listen_with(|event, _status, _id| match event {
+                iced::Event::Window(iced::window::Event::FileDropped(path)) => {
                     Some(Message::FileDropped(path))
-                } else {
-                    None
                 }
+                iced::Event::Window(iced::window::Event::Focused) => {
+                    Some(Message::WindowFocused(true))
+                }
+                iced::Event::Window(iced::window::Event::Unfocused) => {
+                    Some(Message::WindowFocused(false))
+                }
+                _ => None,
             }),
             time::every(milliseconds(500)).map(|_| Message::ToggleAnimationState),
         ])
@@ -135,6 +144,13 @@ impl AppState {
     /// Whether data moves right now, so the computer should stay awake.
     pub fn is_moving_data(&self) -> bool {
         self.tasks.is_busy()
+    }
+
+    /// Tells the system too, when the window is in the background and the user wants it.
+    pub fn notify_system(&self, summary: impl ToString, body: impl ToString) {
+        if !self.window_focused && self.config.system_notifications() {
+            util::system_notification::show(summary.to_string(), body.to_string());
+        }
     }
 
     pub fn selected_drive(&self) -> Option<&consoles::Drive> {
