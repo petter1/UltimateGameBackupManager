@@ -295,6 +295,15 @@ fn drive_card(drive: &Drive, selected: bool) -> Element<'_, Message> {
         .align_y(Alignment::Center)
     });
 
+    let not_answering = (!drive.answering).then(|| {
+        row![
+            icon_alert_triangle(),
+            text("Doesn't answer: a sleeping or hung disk, or macOS is asking for access to it")
+        ]
+        .spacing(5)
+        .align_y(Alignment::Center)
+    });
+
     let online = drive.space.is_some();
     let actions = row![
         online.then(|| {
@@ -319,6 +328,7 @@ fn drive_card(drive: &Drive, selected: bool) -> Element<'_, Message> {
     .spacing(5);
 
     let status = match (online, selected) {
+        (false, _) if !drive.answering => "Doesn't answer",
         (false, _) => "Not connected",
         (true, true) => "Connected · selected",
         (true, false) => "Connected",
@@ -326,7 +336,7 @@ fn drive_card(drive: &Drive, selected: bool) -> Element<'_, Message> {
 
     my_group(
         &drive.label,
-        column![path, space, warning, read_only, actions].spacing(5),
+        column![path, space, not_answering, warning, read_only, actions].spacing(5),
     )
     .icon(Icon::HardDrive)
     .top_right_content(text(status).size(12))
