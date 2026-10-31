@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cancelled scrub leaves the game as it was.
 - 📊 Tasks not finished when the app was closed are listed on the Tasks page after a restart, to
   resume (from the beginning) or drop; what they half-wrote is removed first.
+- 🔍 "Hash mismatch" says why when it can: a Wii dump without its update partition (often removed
+  when making a WBFS) can't match the disc, though that alone doesn't stop the game from working.
 
 ## [v6.1.9] - 2026-10-21
 
