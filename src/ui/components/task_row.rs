@@ -19,12 +19,14 @@ pub fn task_row(task: &Task) -> Element<'_, Message> {
     let status: Element<'_, Message> = match task.state() {
         TaskState::Waiting => text("Waiting").into(),
         TaskState::Running | TaskState::Paused => {
-            let mut line = progress.summary();
-            if *task.state() == TaskState::Paused {
-                line = format!("Paused · {line}");
+            // a paused task has no speed and no time left, only how far it got
+            let line = if *task.state() == TaskState::Paused {
+                format!("Paused · {}", progress.amount())
             } else if !progress.message.is_empty() && progress.total_bytes.is_none() {
-                line = progress.message.clone();
-            }
+                progress.message.clone()
+            } else {
+                progress.summary()
+            };
 
             column![
                 progress_bar(0.0..=1.0, progress.fraction().unwrap_or(0.0)).girth(6),
