@@ -65,27 +65,27 @@ fn titlebar(state: &AppState) -> Element<'_, Message> {
     .into()
 }
 
+/// Whether the message contains `search`, which is already trimmed and in lowercase.
 fn matches_search(notification: &Notification, search: &str) -> bool {
-    search.is_empty()
-        || notification
-            .label()
-            .to_lowercase()
-            .contains(&search.trim().to_lowercase())
+    search.is_empty() || notification.label().to_lowercase().contains(search)
 }
 
 /// Every message since the start, the newest first; the log file has all of them.
 pub fn messages(state: &AppState) -> Element<'_, Message> {
+    let search = state.messages_search.trim().to_lowercase();
     let shown = state
         .notifications
         .history()
         .iter()
         .rev()
         .filter(|n| !state.messages_problems_only || n.is_problem())
-        .filter(|n| matches_search(n, &state.messages_search))
+        .filter(|n| matches_search(n, &search))
         .collect::<Vec<_>>();
 
-    let content: Element<'_, Message> = if shown.is_empty() {
+    let content: Element<'_, Message> = if state.notifications.history().is_empty() {
         text("No messages yet.").into()
+    } else if shown.is_empty() {
+        text("No messages match.").into()
     } else {
         my_card(
             shown
@@ -111,10 +111,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn search_ignores_case_and_surrounding_spaces() {
+    fn search_ignores_case() {
         let n = Notification::error("Read-only file system");
         assert!(matches_search(&n, ""));
-        assert!(matches_search(&n, " read-ONLY "));
+        assert!(matches_search(&n, "read-only"));
         assert!(!matches_search(&n, "disk full"));
     }
 }

@@ -137,11 +137,11 @@ First step (#20, 2026-10-31): the same message again is counted in one toast ("2
 shown again; the log file (`log.txt`, already there) gets every one. Works on the Mac
 (2026-10-31); test log entry still to write.
 
-Messages page (`claude/m1a-plus-notification-center`, 2026-10-31, on top of the first step):
-every message since the start (the last 1000; runs of the same one are one entry), newest
-first, a filter "Only warnings and errors", a search field, "Open log file". Still open: the source (task,
-console, drive) with a link to it, grouping different errors of one task, log levels with debug
-lines, export.
+Messages page (#24, 2026-10-31, on top of the first step): every message since the start (the
+last 1000; runs of the same one are one entry), newest first, a filter "Only warnings and
+errors", a search field, "Open log file". Works on the Mac (2026-10-31), the search not tried
+yet. Still open: the source (task, console, drive) with a link to it, grouping different errors
+of one task, log levels with debug lines, export.
 
 
 ### M1 · Install on the 3DS over Wi-Fi (M)

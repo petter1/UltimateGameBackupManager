@@ -24,7 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🔔 The same message again (e.g. one "Read-only file system" per file) is counted in one
   notification ("245×") instead of piling up; the log file still gets every one.
 - 💬 A Messages page lists every message since the start, also the closed ones, newest first,
-  optionally only warnings and errors, with a button that opens the log file.
+  optionally only warnings and errors or those containing a search text, with a button that
+  opens the log file.
 
 ## [v6.1.9] - 2026-10-21
 
