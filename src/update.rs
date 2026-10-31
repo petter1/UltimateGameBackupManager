@@ -280,12 +280,9 @@ impl AppState {
                             self.notifications.push(Notification::success(message));
                         }
                         TaskState::Failed(reason) => {
-                            self.notify_system(
-                                "Task failed",
-                                format!("{}: {reason}", task.title()),
-                            );
-                            self.notifications
-                                .push(Notification::error(format!("{}: {reason}", task.title())));
+                            let text = format!("{}: {reason}", task.title());
+                            self.notify_system("Task failed", &text);
+                            self.notifications.push(Notification::error(text));
                         }
                         _ => {}
                     }
