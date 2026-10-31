@@ -4,7 +4,7 @@
 use crate::{
     config::message::ConfigMessage,
     consoles,
-    games::{ImportEntry, games_state::GamesState, txtcodes::download_cheats},
+    games::{ImportEntry, games_state::GamesState, read_import_entries, txtcodes::download_cheats},
     homebrew::homebrew_state::HomebrewState,
     jobs::Job,
     library,
@@ -16,6 +16,7 @@ use crate::{
     ui::{dialogs, modals::Modal, pages::Page},
 };
 use iced::Task;
+use size::Size;
 use std::time::Instant;
 
 const NEW_DRIVE_TEXT: &str = "New drive detected (or a breaking app update has been installed)\nA path normalization run is recommended\nYou can find it in the Toolbox page";
@@ -30,6 +31,7 @@ fn writes_to_drive(message: &Message) -> bool {
             | Message::InstallOscApp(_)
             | Message::DownloadTxtCodes(_)
             | Message::PickedGames(_)
+            | Message::CopyShownToDrive
             | Message::Scrub(_)
     )
 }
@@ -690,6 +692,78 @@ impl AppState {
                     Err(e) => Message::Notify(e.into()),
                 })
             }
+            Message::CopyShownToDrive => {
+                if self.config.mount_point().as_os_str().is_empty() {
+                    return Task::done(Message::Notify(Notification::warning(
+                        "Select a drive in My Consoles first",
+                    )));
+                }
+                // without the drive's list every game would be "already on the drive" one by one
+                let GamesState::Loaded(games) = &self.games else {
+                    return Task::done(Message::Notify(Notification::warning(
+                        "The games on the drive aren't read yet: try again in a moment",
+                    )));
+                };
+                let existing_ids = games.get_all_game_ids().collect::<Vec<_>>();
+
+                let (in_cloud, paths): (Vec<_>, Vec<_>) = self
+                    .library
+                    .shown_drive_games()
+                    .partition(|item| item.in_cloud);
+                if !in_cloud.is_empty() {
+                    self.notifications.push(Notification::info(format!(
+                        "{} only in the cloud, not copied: download them first",
+                        games_count(in_cloud.len())
+                    )));
+                }
+                let paths = paths
+                    .into_iter()
+                    .map(|item| item.path.clone())
+                    .collect::<Vec<_>>();
+                let mount_point = self.config.mount_point().to_path_buf();
+
+                Task::perform(
+                    async move {
+                        let (entries, unreadable) = read_import_entries(paths, &existing_ids).await;
+                        let mut needed = 0;
+                        for entry in &entries {
+                            needed += smol::fs::metadata(entry.path())
+                                .await
+                                .map_or(0, |meta| meta.len());
+                        }
+                        let free = smol::unblock(move || fs4::statvfs(&mount_point))
+                            .await
+                            .ok()
+                            .map(|stat| stat.available_space());
+                        (entries, unreadable, needed, free)
+                    },
+                    |pick| pick,
+                )
+                .then(|(entries, unreadable, needed, free)| {
+                    let mut tasks = unreadable
+                        .into_iter()
+                        .map(|(path, e)| {
+                            Task::done(Message::Notify(Notification::warning(format!(
+                                "{} can't be read, not copied: {e:#}",
+                                path.display()
+                            ))))
+                        })
+                        .collect::<Vec<_>>();
+                    // the files' sizes: a converted or scrubbed copy on the drive can differ
+                    match free {
+                        Some(free) if needed > free => {
+                            tasks.push(Task::done(Message::Notify(Notification::error(format!(
+                                "Copying {} needs about {}, the drive has {} free: nothing copied",
+                                games_count(entries.len()),
+                                Size::from_bytes(needed),
+                                Size::from_bytes(free)
+                            )))));
+                        }
+                        _ => tasks.push(Task::done(Message::PickedGames(entries))),
+                    }
+                    Task::batch(tasks)
+                })
+            }
             Message::GotUpdate(new_version) => {
                 self.new_version = Some(new_version);
                 Task::none()
@@ -715,5 +789,13 @@ impl AppState {
                 self.start_ready_tasks()
             }
         }
+    }
+}
+
+fn games_count(n: usize) -> String {
+    if n == 1 {
+        "1 game".to_string()
+    } else {
+        format!("{n} games")
     }
 }
