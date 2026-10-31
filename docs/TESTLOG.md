@@ -56,6 +56,19 @@ console, a real drive or a real collection can show.
 | **Result** | ✅ Glacier 3: "…: the dump has no update partition (often removed when making a WBFS), so it can't match the disc. The game itself is not affected". Disney Planes: "…: not a known good dump. It may be damaged, another version or changed otherwise; the hash can't tell which". The GameCube ISO's SHA-1 (373505dc…) is in the list; the same file is on WiiGames as Worms 3D [GWME51], and "SHA1" there says "Hash match for Worms 3D! - SHA1 is well known, your dump is perfect". The message names the game twice ("Check the hash of Glacier 3: Hash mismatch for Glacier 3: …") |
 | **Follow-up** | the doubled title in the message |
 
+### 2026-10-31 · WiiGames · drive list with a drive that doesn't answer (#35)
+
+| | |
+| --- | --- |
+| **Device** | WiiGames, Wii/GameCube USB drive, FAT32 |
+| **What** | #35: a drive not read within 5 s is listed as "Doesn't answer" instead of emptying the drive list in My Consoles |
+| **Who** | Claude on petter1's Mac, the app driven in the background (computer use) |
+| **When** | 2026-10-31, branch `claude/drives-not-answering` (debug build), macOS 27 |
+| **How** | A freshly signed test build started, so macOS's access prompt for removable volumes was pending; My Consoles opened |
+| **Why** | before, My Consoles showed no drives at all for over a minute, even after refreshing |
+| **Result** | ⚠️ WiiGames is listed with "Doesn't answer" instead of an empty list. Not tried: that a refresh picks it up once access is allowed (needs a click on the prompt) |
+| **Follow-up** | refresh after allowing access |
+
 ### 2026-10-31 · WiiGames · a game already on the drive isn't imported again (#33)
 
 | | |
@@ -66,7 +79,7 @@ console, a real drive or a real collection can show.
 | **When** | 2026-10-31, branch `claude/import-keeps-existing-games` (debug build, a temporary test not committed), macOS 27 |
 | **How** | `ImportEntry::is_on_drive` against the real drive for Glacier 3 and Xenoblade Chronicles (split WBFS) on WiiGames, and against WIIRO |
 | **Why** | a dropped game skipped the check and overwrote the game on the drive |
-| **Result** | ⚠️ On WiiGames both are found, on WIIRO neither. Not tried in the window: dropping a file onto the Games page (can't be done from the background) |
+| **Result** | ⚠️ On WiiGames both are found; on WIIRO, which doesn't hold them, neither (as expected). Not tried in the window: dropping a file onto the Games page (can't be done from the background) |
 | **Follow-up** | drop a game that is on WiiGames → "… is already on the drive" |
 
 ### 2026-10-31 · WiiGames, gamestation · library scan with a source that doesn't answer (#31)
