@@ -48,7 +48,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
   the background every 15 seconds (failures only logged), installed titles remembered in
   `consoles.json`. Ported from the local branch `feature/task-manager`, which predates #4 and
   has its own task manager; nothing else there is needed (its M1d roadmap is #8, staying awake
-  is #7). `main` merged in 2026-10-31. Waits for the Mac test (item 5 in "Waiting for the Mac" on that branch) before merging.
+  is #7). `main` merged in 2026-10-31. To check on the 3DS (see the Mac checklist): pausing an install holds
+  the TCP connection open, which Link may give up on (then Install tasks shouldn't offer Pause);
+  cancelling drops the connection, so check that no half-installed title is left. Waits for the Mac test (item 5 in "Waiting for the Mac" on that branch) before merging.
 - **M0b**: done (#18, tested on the Mac 2026-10-31).
 - A drive that doesn't answer no longer holds up the settings: merged (#28). Trying a build on
   macOS: BUILDING.md (#29). New milestone M2b, explain and repair bad dumps (#26): WBFS dumps
@@ -56,6 +58,10 @@ start from `main` and only see what is there, so the update goes to `main` in it
 - A ROM source that doesn't answer (e.g. a hung disk) no longer holds up the library scan: each
   source on its own thread, given up after 15 s without data, keeping its items from
   `library.json`, with a warning: merged (#31), tried on the Mac with gamestation hung.
+- A disc already on the drive isn't imported again, from the dialog or by drag and drop: merged
+  (#33). This keeps #13's restart cleanup (it deletes every file with the game's prefix) from
+  removing a game that was there before. Open: picking the same game twice before its import
+  starts still queues two imports.
 - **M1a+, notifications and log**: first step, pull request **#20**, branch
   `claude/m1a-plus-group-notifications`, open: the same message again is counted ("245×") in
   one toast; works on the Mac. Second step, pull request **#22**, branch `claude/m1a-plus-system-notifications`,
