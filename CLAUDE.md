@@ -47,6 +47,10 @@ start from `main` and only see what is there, so the update goes to `main` in it
   has its own task manager; nothing else there is needed (its M1d roadmap is #8, staying awake
   is #7). `main` merged in 2026-10-31. Waits for the Mac test (item 5 in "Waiting for the Mac" on that branch) before merging.
 - **M0b**: done (#18, tested on the Mac 2026-10-31).
+- **M1a+, notifications and log**: first step, pull request **#20**, branch
+  `claude/m1a-plus-group-notifications`, open: the same message again is counted ("245×") in
+  one toast. Waits for the Mac test (item 4 in "Waiting for the Mac"). Next steps: system
+  notifications, the notification center with the log (see the roadmap).
 - Branches to delete on GitHub: `feature/task-manager` once #11 is merged. Sessions on the
   maintainer's Mac can delete remote branches (done for the earlier ones on 2026-10-31).
 
