@@ -37,7 +37,7 @@ each item is ticked off here (and gets its test log entry) when done.
    and both are listed on the Tasks page. Drop the first: its half-written files in `wbfs/` or
    `games/` are gone. Resume the second: it imports completely. Also quit during a scrub and
    resume it (the game must still start in USB Loader GX), and start once with WiiGames
-   unplugged: resuming fails with "is not connected". Test log entry.
+   unplugged: resuming fails with "is not connected" and the task stays listed. Test log entry.
 
 ## How the app is meant to work
 

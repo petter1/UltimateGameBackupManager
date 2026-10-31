@@ -64,7 +64,8 @@ pub enum Message {
     /// One unfinished task from before the restart, by its place in the list; `None`: all
     ResumeUnfinished(Option<usize>),
     DropUnfinished(Option<usize>),
-    RestoredTasks(Vec<(String, Result<Job, String>)>),
+    /// Each task with its job read again, or why that failed (it is then listed again)
+    RestoredTasks(Vec<(SavedTask, Result<Job, String>)>),
     ToggleAnimationState,
     ReloadCover(GameID),
     ReloadOscIcon(usize),

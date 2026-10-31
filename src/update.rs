@@ -352,12 +352,15 @@ impl AppState {
                 self.drop_unfinished(saved)
             }
             Message::RestoredTasks(restored) => {
-                for (title, result) in restored {
+                for (task, result) in restored {
                     match result {
                         Ok(job) => self.add_job(job),
-                        Err(reason) => self
-                            .notifications
-                            .push(Notification::error(format!("{title}: {reason}"))),
+                        Err(reason) => {
+                            // e.g. the drive isn't connected: kept, to resume or drop later
+                            self.notifications
+                                .push(Notification::error(format!("{}: {reason}", task.title)));
+                            self.unfinished.get_or_insert_default().push(task);
+                        }
                     }
                 }
                 self.start_ready_tasks()

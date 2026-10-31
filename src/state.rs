@@ -332,10 +332,11 @@ impl AppState {
             async move {
                 let mut restored = Vec::with_capacity(saved.len());
                 for task in saved {
-                    if let Some(leftovers) = task.leftovers {
+                    if let Some(leftovers) = task.leftovers_to_remove().cloned() {
                         smol::unblock(move || leftovers.remove_blocking()).await;
                     }
-                    restored.push((task.title, task.job.restore().await));
+                    let job = task.job.clone().restore().await;
+                    restored.push((task, job));
                 }
                 restored
             },
@@ -360,8 +361,10 @@ impl AppState {
     pub fn drop_unfinished(&mut self, saved: Vec<SavedTask>) -> Task<Message> {
         Task::perform(
             smol::unblock(move || {
-                for leftovers in saved.into_iter().filter_map(|task| task.leftovers) {
-                    leftovers.remove_blocking();
+                for task in &saved {
+                    if let Some(leftovers) = task.leftovers_to_remove() {
+                        leftovers.remove_blocking();
+                    }
                 }
             }),
             |()| Message::NoOp,

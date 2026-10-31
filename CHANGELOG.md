@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   progress bars, pause, cancel and retry; several exports can wait in line, and waiting tasks can
   be moved earlier or later. A cancelled conversion or export removes its half-written file; a
   cancelled scrub leaves the game as it was.
+- 📊 Tasks not finished when the app was closed are listed on the Tasks page after a restart, to
+  resume (from the beginning) or drop; what they half-wrote is removed first.
 
 ## [v6.1.9] - 2026-10-21
 

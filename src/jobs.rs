@@ -223,15 +223,52 @@ pub struct SavedTask {
     pub leftovers: Option<Leftovers>,
 }
 
+impl SavedTask {
+    /// What to remove before the task is resumed or dropped. Nothing for an import whose source
+    /// is gone: it was removed after a complete import ("remove the source"), and the app was
+    /// closed before the task was marked done, so the files on the drive are the only copy.
+    pub fn leftovers_to_remove(&self) -> Option<&Leftovers> {
+        if let SavedJob::Import { source, .. } = &self.job
+            && !source.exists()
+        {
+            return None;
+        }
+
+        self.leftovers.as_ref()
+    }
+}
+
 const TASKS_FILENAME: &str = "tasks.json";
 
-/// The tasks that weren't finished when the app was closed last.
+/// The tasks that weren't finished when the app was closed last. A task that can't be read (a
+/// kind this version doesn't know, or a damaged file) is left out with a warning, not the others.
 pub async fn load_unfinished(data_dir: &Path) -> Vec<SavedTask> {
     let Ok(contents) = smol::fs::read_to_string(data_dir.join(TASKS_FILENAME)).await else {
         return Vec::new();
     };
 
-    serde_json::from_str(&contents).unwrap_or_default()
+    parse_unfinished(&contents)
+}
+
+fn parse_unfinished(contents: &str) -> Vec<SavedTask> {
+    let tasks: Vec<serde_json::Value> = match serde_json::from_str(contents) {
+        Ok(tasks) => tasks,
+        Err(e) => {
+            eprintln!("WARN: Could not read the unfinished tasks in {TASKS_FILENAME}: {e}");
+            return Vec::new();
+        }
+    };
+
+    tasks
+        .into_iter()
+        .filter_map(|task| match serde_json::from_value(task) {
+            Ok(task) => Some(task),
+            Err(e) => {
+                eprintln!("WARN: Left out an unfinished task in {TASKS_FILENAME}: {e}");
+                None
+            }
+        })
+        .collect()
 }
 
 /// Writes the unfinished tasks. Blocking, but small and only when they change; writing in the
@@ -284,7 +321,7 @@ impl Job {
     pub fn leftovers(&self) -> Leftovers {
         match self {
             Self::Import { entry, config, .. } => Leftovers::Files {
-                dir: import::game_dir(entry, config),
+                dir: import::game_dir(entry, config.mount_point()),
                 prefix: import::file_prefix(entry),
             },
             Self::Convert { out_path, .. } | Self::Export { out_path, .. } => {
@@ -441,6 +478,39 @@ mod tests {
             serde_json::to_string(&job.to_saved()).unwrap(),
             serde_json::to_string(&saved[0].job).unwrap()
         );
+    }
+
+    #[test]
+    fn an_unknown_task_leaves_the_others() {
+        let json = r#"[
+            {"title": "Install", "job": {"Install": {"cia": "/a.cia"}}, "leftovers": null},
+            {"title": "Convert", "job": {"Convert": {"disc_path": "/a.iso", "out_path": "/b.rvz"}},
+             "leftovers": null}
+        ]"#;
+        let loaded = parse_unfinished(json);
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].title, "Convert");
+
+        assert!(parse_unfinished("not json").is_empty());
+    }
+
+    #[test]
+    fn an_import_without_its_source_keeps_its_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("game.iso");
+        let config: ConfigContents = serde_json::from_str("{}").unwrap();
+        let task = SavedTask {
+            title: "Import".into(),
+            job: SavedJob::Import {
+                source: source.clone(),
+                config,
+            },
+            leftovers: Some(Leftovers::File(dir.path().join("out"))),
+        };
+        assert!(task.leftovers_to_remove().is_none());
+
+        fs::write(&source, "disc").unwrap();
+        assert!(task.leftovers_to_remove().is_some());
     }
 
     #[test]

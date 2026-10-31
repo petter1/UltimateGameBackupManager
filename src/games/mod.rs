@@ -140,19 +140,8 @@ impl ImportEntry {
             return false;
         }
 
-        let (parent, prefix) = if self.meta.is_wii() {
-            ("wbfs", format!("{}.", self.meta.game_id()))
-        } else {
-            match self.meta.disc_number() {
-                0 => ("games", "game.".to_string()),
-                n => ("games", format!("disc{}.", n + 1)),
-            }
-        };
-
-        let dir = mount_point.join(parent).join(import::make_game_dir_name(
-            self.meta.game_id(),
-            self.meta.game_title(),
-        ));
+        let dir = import::game_dir(self, mount_point);
+        let prefix = import::file_prefix(self);
 
         std::fs::read_dir(dir).is_ok_and(|entries| {
             entries
