@@ -249,6 +249,26 @@ impl AppState {
     }
 
     /// Adds a job to the task manager; [`Self::start_ready_tasks`] starts it.
+    /// The discs of the imports to the selected drive that haven't finished yet.
+    pub fn queued_imports(&self) -> Vec<(GameID, u8)> {
+        self.jobs
+            .iter()
+            .filter(|(id, _)| {
+                self.tasks
+                    .get(**id)
+                    .is_some_and(|t| !t.state().is_finished())
+            })
+            .filter_map(|(_, job)| match job {
+                Job::Import { entry, config, .. }
+                    if config.mount_point() == self.config.mount_point() =>
+                {
+                    Some(entry.target())
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     pub fn add_job(&mut self, job: Job) {
         let id = self.tasks.add(job.title(), job.resources());
         self.jobs.insert(id, job);
