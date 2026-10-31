@@ -282,15 +282,14 @@ be fixed from a second copy, which the library knows about.
   partition is byte-identical.
 - A Redump-exact dump does match: Worms 3D [GWME51] (GameCube ISO on WiiGames, the same as the
   Redump-named one on gamestation) gives "Hash match" (2026-10-31). Every WBFS on WiiGames tried
-  gave "mismatch". Read with nod on 2026-10-31: 32 of the 48 Wii WBFS on WiiGames
-  have no update partition (*shortened*); the message now says so
-  (`claude/m2b-explain-mismatch`). The other 16 have one and still don't match, e.g. Disney
-  Planes Fire & Rescue [SQQPVZ]: SHA-1 `f0bce155…` against Redump's `28cacd91…` (Europe) – damaged,
-  zeroed update partition or a nod reconstruction issue.
+  gave "mismatch". Read with nod on 2026-10-31: 32 of the 48 Wii WBFS on WiiGames have no update
+  partition (*shortened*); the message now says so (#38). The other 16 have one and still don't
+  match, e.g. Disney Planes Fire & Rescue [SQQPVZ]: SHA-1 `f0bce155…` against Redump's
+  `28cacd91…` (Europe) – damaged, zeroed update partition or a nod reconstruction issue.
 - The H0–H3 check doesn't work on WBFS as it is: nod's `PartitionOptions::validate_hashes`
   reports a bad H3 or H0 hash in the first megabytes of almost every WBFS on WiiGames (tried on
   5 on 2026-10-31), most likely where WBFS left out unused block groups. It has to skip the
-  groups the image doesn't store, or it only works on full ISO/RVZ dumps. 
+  groups the image doesn't store, or it only works on full ISO/RVZ dumps.
 
 ### M3 · Injects by content (M–L)
 

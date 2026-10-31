@@ -19,8 +19,8 @@ use smol::stream::Stream;
 enum Verdict {
     /// The SHA-1 is in the list of known good dumps (Redump).
     Known,
-    /// A Wii dump without its update partition (WBFS tools often drop it): the game works, but
-    /// the dump can't match the disc any more.
+    /// A Wii dump without its update partition (WBFS tools often drop it): it can't match the
+    /// disc any more, whether or not the rest is intact.
     UpdateRemoved,
     /// Not in the list: damaged, another version, or changed in a way the hash can't tell.
     Unknown,
@@ -82,8 +82,9 @@ pub fn calc_sha1(game: Game, control: TaskControl) -> impl Stream<Item = WorkerE
             )),
             // the task's title already names the game
             Ok(Verdict::UpdateRemoved) => Err("Hash mismatch: the dump has no update partition \
-                 (often removed when making a WBFS), so it can't match the disc. The game itself \
-                 is not affected"
+                 (often removed when making a WBFS), so it can't match the disc. That alone \
+                 doesn't stop the game from working; whether the rest is intact, the hash can't \
+                 tell"
                 .to_string()),
             Ok(Verdict::Unknown) => Err("Hash mismatch: not a known good dump. It may be \
                  damaged, another version or changed otherwise; the hash can't tell which"
