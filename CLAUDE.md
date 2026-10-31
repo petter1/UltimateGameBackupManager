@@ -61,13 +61,18 @@ start from `main` and only see what is there, so the update goes to `main` in it
 - A disc already on the drive isn't imported again, from the dialog or by drag and drop: merged
   (#33). This keeps #13's restart cleanup (it deletes every file with the game's prefix) from
   removing a game that was there before. Open: picking the same game twice before its import
-  starts still queues two imports.
+  starts still queues two imports: fixed in pull request **#36** (`claude/no-double-import`),
+  open, not tried on the Mac.
+- A drive that doesn't answer (a hung disk, or macOS's access prompt for removable volumes, which
+  every re-signed test build triggers again) emptied the drive list in My Consoles: pull request
+  **#35** (`claude/drives-not-answering`), open, tried on the Mac.
 - **M1a+, notifications and log**: first step, pull request **#20**, branch
   `claude/m1a-plus-group-notifications`, open: the same message again is counted ("245×") in
   one toast; works on the Mac. Second step, pull request **#22**, branch `claude/m1a-plus-system-notifications`,
   open: system notifications (`notify-rust`) for a task done or failed and an update ready while
-  the window is in the background, with a setting; on the Mac it was sent, the banner not seen
-  yet; #20 and #22 (and #7, a field in `AppState`) touch the same lines,
+  the window is in the background, with a setting. Fixed 2026-10-31: an app opened in the
+  background never sent any (it assumed the focus). The banner is still not seen; a test build
+  may first need the notification permission; #20 and #22 (and #7, a field in `AppState`) touch the same lines,
   the one merged later keeps both. Third step, pull request **#24**, branch
   `claude/m1a-plus-notification-center`, stacked on #20 (merge #20 first): a Messages page with
   every message since the start, a filter for warnings and errors, "Open log file"; works on the
