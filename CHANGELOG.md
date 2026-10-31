@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 💬 A Messages page lists every message since the start, also the closed ones, newest first,
   optionally only warnings and errors or those containing a search text, with a button that
   opens the log file.
+- 🔍 "Hash mismatch" says why when it can: a Wii dump without its update partition (often removed
+  when making a WBFS) can't match the disc, though that alone doesn't stop the game from working.
 
 ## [v6.1.9] - 2026-10-21
 
