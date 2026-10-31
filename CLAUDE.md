@@ -53,6 +53,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
 - A drive that doesn't answer no longer holds up the settings: merged (#28). Trying a build on
   macOS: BUILDING.md (#29). New milestone M2b, explain and repair bad dumps (#26): WBFS dumps
   never match the disc's hash.
+- A ROM source that doesn't answer (e.g. a hung disk) no longer holds up the library scan: each
+  source on its own thread, given up after 15 s without data, keeping its items from
+  `library.json`, with a warning: merged (#31), tried on the Mac with gamestation hung.
 - **M1a+, notifications and log**: first step, pull request **#20**, branch
   `claude/m1a-plus-group-notifications`, open: the same message again is counted ("245×") in
   one toast; works on the Mac. Second step, pull request **#22**, branch `claude/m1a-plus-system-notifications`,
