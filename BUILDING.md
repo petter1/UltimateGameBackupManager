@@ -81,7 +81,7 @@ open /tmp/ugbm/UltimateGameBackupManager.app
 
 Things to know:
 
-- **Every rebuild is a new app for macOS.** The ad-hoc signature changes with the binary, so
+- **Every rebuild is a new app for macOS.** The ad-hoc signature (its cdhash) changes with the binary, so
   macOS asks again for access to removable volumes (and other folders). Until that prompt is
   answered, reading the drive waits. Started from a terminal instead
   (`/tmp/ugbm/UltimateGameBackupManager.app/Contents/MacOS/UltimateGameBackupManager`), the app
