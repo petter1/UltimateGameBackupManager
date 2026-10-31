@@ -14,7 +14,7 @@ use crate::{
 use anyhow::Result;
 use iced::widget::image;
 use serde::{Deserialize, Serialize};
-use smol::fs;
+use smol::{fs, future::FutureExt};
 use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
@@ -113,8 +113,10 @@ pub struct ConsolesState {
 pub struct Drive {
     pub path: PathBuf,
     pub label: String,
-    /// None while it isn't plugged in
+    /// None while it isn't plugged in or doesn't answer
     pub space: Option<DriveSpace>,
+    /// False when reading it took longer than [`DRIVE_LOAD_TIMEOUT`] (a hung or sleeping disk)
+    pub answering: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -126,12 +128,23 @@ pub struct DriveSpace {
 }
 
 impl Drive {
-    fn load(path: PathBuf) -> Self {
+    fn load_label(path: PathBuf) -> Self {
         let label = path
             .file_name()
             .unwrap_or(path.as_os_str())
             .to_string_lossy()
             .into_owned();
+
+        Self {
+            path,
+            label,
+            space: None,
+            answering: true,
+        }
+    }
+
+    fn load(path: PathBuf) -> Self {
+        let label = Self::load_label(path.clone()).label;
 
         let space = path
             .is_dir()
@@ -145,7 +158,20 @@ impl Drive {
                 writable: tempfile::tempfile_in(&path).is_ok(),
             });
 
-        Self { path, label, space }
+        Self {
+            path,
+            label,
+            space,
+            answering: true,
+        }
+    }
+
+    fn not_answering(path: PathBuf) -> Self {
+        Self {
+            space: None,
+            answering: false,
+            ..Self::load_label(path)
+        }
     }
 
     pub fn read_only(&self) -> bool {
@@ -172,8 +198,39 @@ impl Drive {
     }
 }
 
+/// How long reading a drive may take before it counts as not answering.
+const DRIVE_LOAD_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Reads every drive on its own thread, so one hung disk doesn't hold up the list: a drive that
+/// doesn't answer in [`DRIVE_LOAD_TIMEOUT`] is shown as such (its thread is left to finish).
 pub async fn load_drives(paths: Vec<PathBuf>) -> Vec<Drive> {
-    smol::unblock(move || paths.into_iter().map(Drive::load).collect()).await
+    let (sender, receiver) = smol::channel::unbounded();
+    for (index, path) in paths.iter().cloned().enumerate() {
+        let sender = sender.clone();
+        std::thread::spawn(move || {
+            let _ = sender.send_blocking((index, Drive::load(path)));
+        });
+    }
+    drop(sender);
+
+    let mut drives: Vec<Option<Drive>> = vec![None; paths.len()];
+    let deadline = smol::Timer::after(DRIVE_LOAD_TIMEOUT);
+    let collect = async {
+        while let Ok((index, drive)) = receiver.recv().await {
+            drives[index] = Some(drive);
+        }
+    };
+    collect
+        .or(async {
+            deadline.await;
+        })
+        .await;
+
+    drives
+        .into_iter()
+        .zip(paths)
+        .map(|(drive, path)| drive.unwrap_or_else(|| Drive::not_answering(path)))
+        .collect()
 }
 
 impl ConsolesState {
@@ -348,6 +405,21 @@ mod tests {
             addr: SocketAddr::new(ip.parse().unwrap(), PORT),
             info: Info::parse(keys),
         }
+    }
+
+    #[test]
+    fn drives_keep_their_order_and_an_unplugged_one_still_answers() {
+        let here = tempfile::tempdir().unwrap();
+        let paths = vec![PathBuf::from("/no/such/drive"), here.path().to_path_buf()];
+
+        let drives = smol::block_on(load_drives(paths.clone()));
+
+        assert_eq!(
+            drives.iter().map(|d| d.path.clone()).collect::<Vec<_>>(),
+            paths
+        );
+        assert!(drives[0].space.is_none() && drives[0].answering);
+        assert!(drives[1].space.is_some() && drives[1].answering);
     }
 
     #[test]

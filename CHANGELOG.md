@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   progress bars, pause, cancel and retry; several exports can wait in line, and waiting tasks can
   be moved earlier or later. A cancelled conversion or export removes its half-written file; a
   cancelled scrub leaves the game as it was.
+- 💾 A drive that doesn't answer (a hung disk, or macOS still asking for access) no longer
+  empties the drive list in My Consoles: each drive is read on its own, and one that takes more
+  than 5 seconds says "Doesn't answer".
 
 ## [v6.1.9] - 2026-10-21
 
