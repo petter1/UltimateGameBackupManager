@@ -228,8 +228,21 @@ impl AppState {
                     Task::none()
                 }
             }
-            Message::PickedGames(paths) => {
-                if paths.is_empty() {
+            Message::PickedGames(mut paths) => {
+                let picked = paths.len();
+                // also for a dropped file, which doesn't go through the dialog's check
+                paths.retain(|entry| {
+                    let on_drive = entry.is_on_drive(self.config.mount_point());
+                    if on_drive {
+                        self.notifications.push(Notification::info(format!(
+                            "{} is already on the drive",
+                            entry.display_title()
+                        )));
+                    }
+                    !on_drive
+                });
+
+                if picked == 0 {
                     self.notifications
                         .push(Notification::info("No new games selected"));
                     Task::none()
@@ -591,7 +604,20 @@ impl AppState {
             Message::ScanLibrary => {
                 self.library.scanning = true;
                 let sources = self.config.rom_sources().to_vec();
-                Task::perform(library::scan_async(sources), Message::GotLibrary)
+                Task::perform(library::scan_async(sources, self.data_dir), |scan| scan).then(
+                    |scan| {
+                        let warnings = scan.unanswered.into_iter().map(|source| {
+                            Task::done(Message::Notify(Notification::warning(format!(
+                                "{} doesn't answer: its games are from the last scan",
+                                source.display()
+                            ))))
+                        });
+                        Task::batch(
+                            std::iter::once(Task::done(Message::GotLibrary(scan.items)))
+                                .chain(warnings),
+                        )
+                    },
+                )
             }
             Message::GotCachedLibrary(items) => {
                 // a finished scan is newer than the cache

@@ -30,8 +30,8 @@ each item is ticked off here (and gets its test log entry) when done.
    from WiiGames at once (the second waits), move a waiting one earlier; scrub a Wii game with an
    update partition, then cancel a second scrub (the game must still start in USB Loader GX);
    check the hash of a known good dump. Test log entry.
-4. **Every later M1a and M1a+ pull request**: try it on the Mac before merging (the stay-awake one with a
-   long import and the Mac left alone until it would sleep).
+4. **Every later M1a and M1a+ pull request**: try it on the Mac before merging (the stay-awake
+   one with a long import and the Mac left alone until it would sleep).
 
 ## How the app is meant to work
 
@@ -133,9 +133,9 @@ TWBM's notifications are toasts in the window that pile up (one per error, e.g. 
   shows the log lines of that level next to the notifications, searchable and exportable as a file
   for bug reports. The log is also written to a file in the data folder.
 
-First step (`claude/m1a-plus-group-notifications`, 2026-10-31): the same message again is counted
-in one toast ("245×") instead of shown again; the log file (`log.txt`, already there) gets every
-one. To try on the Mac, e.g. an import onto the read-only disk image.
+First step (#20, 2026-10-31): the same message again is counted in one toast ("245×") instead of
+shown again; the log file (`log.txt`, already there) gets every one. Works on the Mac
+(2026-10-31); test log entry still to write.
 
 Messages page (`claude/m1a-plus-notification-center`, 2026-10-31, on top of the first step):
 every message since the start (the last 1000; runs of the same one are one entry), newest
@@ -270,6 +270,30 @@ sees what is on it, keeps backups of it and sets up new cards. Builds on M1b (fo
   handles RAR5), falling back to `unar`/`lsar` when only that is installed. The unrar library's
   license doesn't fit GPL, so it isn't linked.
 - Real names for the ~700 entries that are only a title ID today.
+
+### M2b · Explain and repair bad dumps (M) – after M2
+
+Today the game info's "SHA1" button only says "Hash mismatch" (a dump's SHA-1 against the Redump
+list). A hash can't repair anything, but most mismatches aren't damage, and real damage can often
+be fixed from a second copy, which the library knows about.
+
+- **Say why it doesn't match**, instead of only "mismatch":
+  - *shortened*: the update partition was removed or the game was scrubbed. The game works; the
+    dump can't match Redump again without that data.
+  - *damaged*: each 32 KiB block of a Wii partition carries SHA-1s of its data (the H0–H3
+    tables); checking them names the bad blocks, as Dolphin's "Verify" does. GameCube discs have
+    no such tables, so for them only the whole hash is known.
+  - *other version*: a hack, another region or revision; with M2 the databases say which.
+- **Repair from another copy**: when the library has the same game twice (e.g. WiiGames and
+  gamestation), take the good blocks from each, and keep the result only if its hash is in the
+  Redump list. Never overwrite the original; write a new file. Without a second copy the only way
+  is a new dump from the disc.
+- Maybe later: put a removed update partition back from another game of the same region whose
+  partition is byte-identical.
+- First check that a Redump-exact dump matches at all: every WBFS on WiiGames tried on
+  2026-10-31 gave "mismatch" – probably the *shortened* case, as WBFS tools often drop the update
+  partition. The GameCube ISOs on gamestation named after Redump are the next
+  candidates (not hashed yet: the drive stopped answering during the try).
 
 ### M3 · Injects by content (M–L)
 
