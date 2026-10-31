@@ -6,8 +6,11 @@ use anyhow::Result;
 use iced::{Task, futures::TryFutureExt};
 use nod::common::Format;
 use serde::{Deserialize, Serialize};
-use smol::fs;
-use std::path::{Path, PathBuf};
+use smol::{Timer, fs, future::FutureExt};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 use strum_macros::{EnumIter, IntoStaticStr};
 
 pub mod message;
@@ -77,6 +80,21 @@ pub struct ConfigContents {
     system_notifications: bool,
 }
 
+/// How long loading the settings waits for the selected drive to answer.
+const DRIVE_CHECK_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Whether the selected drive is gone. A drive that doesn't answer in time (a sleeping disk, or
+/// macOS asking the user for access to removable volumes) counts as there, so it doesn't hold up
+/// the settings and the rest of the app.
+async fn is_gone(mount_point: &Path) -> bool {
+    async { fs::read_dir(mount_point).await.is_err() }
+        .or(async {
+            Timer::after(DRIVE_CHECK_TIMEOUT).await;
+            false
+        })
+        .await
+}
+
 impl Config {
     pub async fn load(data_dir: &'static Path) -> Self {
         let path = data_dir.join("config.json");
@@ -87,7 +105,7 @@ impl Config {
             .and_then(|s| serde_json::from_str::<ConfigContents>(&s).ok())
             .map(|mut contents| async move {
                 if !contents.mount_point.as_os_str().is_empty()
-                    && fs::read_dir(&contents.mount_point).await.is_err()
+                    && is_gone(&contents.mount_point).await
                 {
                     contents.mount_point = PathBuf::new();
                 }
@@ -432,5 +450,17 @@ mod serde_format {
             "ciso" => Ok(Format::Ciso),
             _ => Ok(Format::Iso),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_missing_drive_is_gone_an_existing_one_is_not() {
+        let missing = std::env::temp_dir().join("ugbm-no-such-drive");
+        assert!(smol::block_on(is_gone(&missing)));
+        assert!(!smol::block_on(is_gone(&std::env::temp_dir())));
     }
 }
