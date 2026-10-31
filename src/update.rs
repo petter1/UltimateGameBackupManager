@@ -4,20 +4,19 @@
 use crate::{
     config::message::ConfigMessage,
     consoles,
-    games::{
-        ImportEntry, calc_sha1::calc_sha1, convert::convert_game, export::export_game,
-        games_state::GamesState, scrub::scrub_game, txtcodes::download_cheats,
-    },
+    games::{ImportEntry, games_state::GamesState, txtcodes::download_cheats},
     homebrew::homebrew_state::HomebrewState,
+    jobs::Job,
     library,
-    long_operation::{LongOperationKind, LongOperationState},
     message::Message,
     notifications::notification::Notification,
     osc::osc_state::OscState,
     state::AppState,
+    tasks::{TaskState, WorkerEvent},
     ui::{dialogs, modals::Modal, pages::Page},
 };
 use iced::Task;
+use std::time::Instant;
 
 const NEW_DRIVE_TEXT: &str = "New drive detected (or a breaking app update has been installed)\nA path normalization run is recommended\nYou can find it in the Toolbox page";
 
@@ -31,7 +30,6 @@ fn writes_to_drive(message: &Message) -> bool {
             | Message::InstallOscApp(_)
             | Message::DownloadTxtCodes(_)
             | Message::PickedGames(_)
-            | Message::TriggerImport
             | Message::Scrub(_)
     )
 }
@@ -212,14 +210,11 @@ impl AppState {
             }
             Message::HomebrewAppsImported(_) => Task::none(),
             Message::CalcGameSha1(game) => {
-                self.long_operations.set(
-                    LongOperationKind::Hash,
-                    LongOperationState::Progress(String::new()),
-                );
-
-                Task::stream(calc_sha1(game)).map(|op_state| {
-                    Message::SetLongOperationState(LongOperationKind::Hash, op_state)
-                })
+                self.add_job(Job::Hash {
+                    game,
+                    mount_point: self.config.mount_point().to_path_buf(),
+                });
+                self.start_ready_tasks()
             }
             Message::PickGames => {
                 if let GamesState::Loaded(games) = &self.games {
@@ -249,21 +244,94 @@ impl AppState {
                         .push(Notification::info("No new games selected"));
                     Task::none()
                 } else {
-                    self.add_to_import_queue(paths);
-                    self.current_page = Page::ImportQueue;
-                    Task::none()
+                    for entry in paths {
+                        self.add_job(Job::Import {
+                            entry,
+                            config: self.config.clone(),
+                            drive: self.drive.clone(),
+                        });
+                    }
+
+                    self.start_ready_tasks()
                 }
             }
-            Message::CancelImport(i) => {
-                self.import_queue.remove(i);
+            Message::TaskEvent(
+                id,
+                WorkerEvent::Progress {
+                    done_bytes,
+                    total_bytes,
+                    message,
+                },
+            ) => {
+                self.tasks
+                    .update_progress(id, done_bytes, total_bytes, message, Instant::now());
                 Task::none()
             }
-            Message::CancelAllImports => {
-                self.import_queue.clear();
+            Message::TaskEvent(id, WorkerEvent::Finished(result)) => {
+                self.tasks.finish(id, result);
+
+                if let Some(task) = self.tasks.get(id) {
+                    match task.state() {
+                        TaskState::Done(message) => {
+                            self.notifications.push(Notification::success(message));
+                        }
+                        TaskState::Failed(reason) => self
+                            .notifications
+                            .push(Notification::error(format!("{}: {reason}", task.title()))),
+                        _ => {}
+                    }
+                }
+
+                // only the drive shown needs reloading, and only if the job changed its games
+                let refresh = match self.jobs.get(&id).and_then(Job::changes_games_on) {
+                    Some(mount_point) if mount_point == self.config.mount_point() => {
+                        Task::batch([self.get_games_task(), self.get_drive_info_task()])
+                    }
+                    _ => Task::none(),
+                };
+
+                Task::batch([self.start_ready_tasks(), refresh])
+            }
+            Message::CancelTask(id) => {
+                self.tasks.cancel(id);
+                self.start_ready_tasks()
+            }
+            Message::CancelAllTasks => {
+                let ids: Vec<_> = self
+                    .tasks
+                    .iter()
+                    .filter(|t| !t.state().is_finished())
+                    .map(|t| t.id())
+                    .collect();
+
+                for id in ids {
+                    self.tasks.cancel(id);
+                }
+
+                Task::none()
+            }
+            Message::PauseTask(id) => {
+                self.tasks.pause(id);
+                Task::none()
+            }
+            Message::ResumeTask(id) => {
+                self.tasks.resume(id);
+                Task::none()
+            }
+            Message::MoveTask(id, up) => {
+                self.tasks.move_waiting(id, up);
+                Task::none()
+            }
+            Message::RetryTask(id) => {
+                self.tasks.retry(id);
+                self.start_ready_tasks()
+            }
+            Message::ClearTaskHistory => {
+                self.clear_task_history();
                 Task::none()
             }
             Message::ToggleAnimationState => {
-                if !self.long_operations.is_idle(LongOperationKind::Import) {
+                if self.tasks.running_count() > 0 {
                     self.animation_state = !self.animation_state;
                 }
 
@@ -309,41 +377,12 @@ impl AppState {
                 dialogs::make_pick_export_game_dest_dialog_task(base, game.clone())
             }),
             Message::ExportGame(game, out_path) => {
-                self.long_operations.set(
-                    LongOperationKind::Export,
-                    LongOperationState::Progress(String::new()),
-                );
-
-                Task::stream(export_game(game, out_path)).map(|op_state| {
-                    Message::SetLongOperationState(LongOperationKind::Export, op_state)
-                })
-            }
-            Message::SetLongOperationState(op_kind, mut op_state) => {
-                let should_continue = op_kind == LongOperationKind::Import
-                    && matches!(
-                        op_state,
-                        LongOperationState::Finished(_) | LongOperationState::Errored(_)
-                    );
-
-                if let LongOperationState::Finished(success) = op_state {
-                    self.notifications.push(Notification::success(success));
-                    op_state = LongOperationState::Idle;
-                } else if let LongOperationState::Errored(error) = op_state {
-                    self.notifications.push(Notification::error(error));
-                    op_state = LongOperationState::Idle;
-                }
-
-                self.long_operations.set(op_kind, op_state);
-
-                if should_continue {
-                    Task::batch([
-                        self.trigger_import_task(),
-                        self.get_games_task(),
-                        self.get_drive_info_task(),
-                    ])
-                } else {
-                    Task::none()
-                }
+                self.add_job(Job::Export {
+                    game,
+                    out_path,
+                    mount_point: self.config.mount_point().to_path_buf(),
+                });
+                self.start_ready_tasks()
             }
             Message::RunTool(tool) => self.run_tool(tool),
             Message::PickFileToSendViaWiiload => dialogs::init_file_dialog_task()
@@ -454,9 +493,11 @@ impl AppState {
                 dialogs::init_file_dialog_task().then(dialogs::make_pick_in_out_dialogs_task)
             }
             Message::ConvertGame(disc_path, out_path) => {
-                Task::stream(convert_game(disc_path, out_path)).map(|op_state| {
-                    Message::SetLongOperationState(LongOperationKind::Convert, op_state)
-                })
+                self.add_job(Job::Convert {
+                    disc_path,
+                    out_path,
+                });
+                self.start_ready_tasks()
             }
             Message::GotKnownConsoles(entries) => {
                 self.consoles.set_known(entries);
@@ -615,7 +656,6 @@ impl AppState {
                 self.new_version = Some(new_version);
                 Task::none()
             }
-            Message::TriggerImport => self.trigger_import_task(),
             Message::FileDropped(path) => match self.current_page {
                 Page::Games => Task::perform(ImportEntry::new(path), |res| match res {
                     Ok(entry) => Message::PickedGames(vec![entry]),
@@ -630,11 +670,11 @@ impl AppState {
             }
             Message::Scrub(game) => {
                 self.current_modal = None;
-                Task::stream(scrub_game(game))
-                    .map(|op_state| {
-                        Message::SetLongOperationState(LongOperationKind::Scrub, op_state)
-                    })
-                    .chain(Task::done(Message::RefreshGamesAndApps))
+                self.add_job(Job::Scrub {
+                    game,
+                    mount_point: self.config.mount_point().to_path_buf(),
+                });
+                self.start_ready_tasks()
             }
         }
     }

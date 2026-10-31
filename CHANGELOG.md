@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (new app ID `io.github.petter1.UltimateGameBackupManager`, own data directory and update checks).
   The entries below are TinyWiiBackupManager's history.
 - 🎨 Own icon: the letters "UGBM" instead of TinyWiiBackupManager's Wiimote.
+- 📊 Imports are tasks: they start right away, one at a time per drive, with a progress bar
+  (size, speed, time left) on the new Tasks page and a bar at the bottom of every page. A running
+  import can be paused or cancelled – a cancelled or failed import leaves no half-written files
+  behind – and retried. Replaces the import queue and its "Start importing" button.
+- 📊 Converting, exporting, scrubbing and checking the hash of a game are tasks too, with the same
+  progress bars, pause, cancel and retry; several exports can wait in line, and waiting tasks can
+  be moved earlier or later. A cancelled conversion or export removes its half-written file; a
+  cancelled scrub leaves the game as it was.
 - ☕ The computer doesn't go to sleep from idleness while games are imported, converted,
   exported, scrubbed or checked (macOS: `caffeinate`, Linux: `systemd-inhibit`, Windows:
   `SetThreadExecutionState`). The screen may still turn off.

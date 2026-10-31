@@ -17,6 +17,22 @@ Done and tried on real hardware (the 3DS "petter1", the iCloud collection and th
 - **[Test log](TESTLOG.md)**: every test on real hardware is written down there – device, what,
   who, when, how, why and the result. From now on each milestone counts as done only with an entry.
 
+## Waiting for the Mac
+
+What cloud sessions can't do: real drives, consoles, the macOS build and its look. In this order;
+each item is ticked off here (and gets its test log entry) when done.
+
+1. ~~**M1a, import as tasks** (#5)~~: done 2026-10-31, see the test log (read-only drive tried
+   with a read-only disk image; the NTFS wording of the message is still untested).
+2. ~~**M0b, own face**~~: done 2026-10-31, see the test log.
+3. **M1a, convert, export, scrub and hash as tasks** (#10, merged before the test too): in the
+   Toolbox convert a game into RVZ and cancel it halfway (no file left); export two games
+   from WiiGames at once (the second waits), move a waiting one earlier; scrub a Wii game with an
+   update partition, then cancel a second scrub (the game must still start in USB Loader GX);
+   check the hash of a known good dump. Test log entry.
+4. **Every later M1a pull request**: try it on the Mac before merging (the stay-awake one with a
+   long import and the Mac left alone until it would sleep).
+
 ## How the app is meant to work
 
 - **Library and devices are separate.** ROM sources are folders on the computer; devices are
@@ -47,44 +63,18 @@ Each milestone ends in something usable. They are in the planned order; sizes ar
   turned out not to be needed: the media folders scan in under a second; the slow part was the
   cold hard disk.)
 
-### M0b · Own face: icon, screenshot, README (S–M) – in progress
+### M0b · Own face: icon, screenshot, README (S–M) – done
 
-**Done** (pull request #3, cloud session 2026-10-30):
 - Icon: the letters "UGBM" in a 2×2 grid, white on a blue–violet rounded square,
-  `assets/icon.svg`. Chosen by the maintainer instead of drafts.
-- `just icons` (see BUILDING.md) made every PNG, the `.ico` and the iconset from it; all committed.
+  `assets/icon.svg`, chosen by the maintainer instead of drafts. `just icons` (see BUILDING.md)
+  makes every size from it: the PNGs, the `.ico`, the macOS iconset and `.icns`, the Linux
+  AppDir sizes, the window icon and the About page (#3; the `.icns` made on the Mac).
+- Screenshot `assets/screenshot.png`: the My Consoles page with real consoles and drives, used in
+  the README and the Linux `metainfo.xml`.
 - README: injects section, phase table replaced by a short overview linking here, every project
   it names linked.
-
-**Open, on the Mac** – a new branch from `main` (e.g. `claude/m0b-macos`), its own pull request;
-nothing else waits for it:
-1. `cargo install resvg`, `brew install imagemagick just` if missing; `just icons` – this also
-   writes `package/macos/App/Contents/Resources/UltimateGameBackupManager.icns`, which is still
-   TWBM's. Commit it (the other generated files should come out unchanged).
-2. Screenshot: start the app (`cargo run`) with the real library, Library or My Consoles page, no
-   personal paths visible (rename sources if needed), about 1800×1500 like the old one; save as
-   `assets/screenshot.png` (replacing TWBM's) and shrink it (`oxipng -o 4` or `pngquant`). README
-   and `metainfo.xml` already point there.
-3. Look at the icon in the Dock, Finder, ⌘-Tab, the window and the About page, also at 16 px in
-   a Finder list; the 16 px size is the weak spot of four letters – if unreadable, a 16/32 px
-   variant with only "U" may be drawn.
-4. Test log entry in TESTLOG.md, then mark M0b done here.
-
-The fork still shows TinyWiiBackupManager's icon (Wiimote, "TWBM") and screenshot.
-
-- **New icon**, drawn as an SVG source in `assets/` (2–3 drafts to choose from): no Nintendo
-  shapes, logos or controllers; readable at 16×16 and on dark backgrounds. A `just icons` recipe
-  makes every size from it: the PNGs, `package/windows/icon.ico`, the window icon, the macOS
-  iconset and `.icns` (`iconutil`, on macOS or in a macOS CI job), the Linux AppDir sizes, the
-  About page.
-- **New screenshot** of the Library or My Consoles with real data and no personal paths; used in
-  the README and in the Linux `metainfo.xml`. The old icon and screenshot are removed everywhere.
-- **README**:
-  - a section on **injects**: what an inject is, which ones are planned (3DS: GBA, NES, SNES,
-    GB; Wii U: N64, DS, GBA, SNES, NES, GameCube, Wii), identifying them by content (M3), one
-    entry per game with "installable on" (M4), building them (3DS through vcinject, later in Rust,
-    M6; Wii U modelled on UWUVCI, M8), and that no keys or ROMs are shipped.
-  - the outdated phase table replaced by a short overview linking to this roadmap.
+- Looked at on the Mac 2026-10-31 (see the test log). At 16 px the four letters blur; the
+  maintainer keeps it that way (a 16 px variant with only "U" would be the fix if it bothers).
 
 ### M1a · Task manager with progress bars (M) – before M1
 
@@ -92,14 +82,18 @@ The fork still shows TinyWiiBackupManager's icon (Wiimote, "TWBM") and screensho
 1. **Core** (`claude/m1a-task-core`): `src/tasks/` without iced – tasks with resources and one
    queue per resource, progress with speed and time left, cancel and pause (`TaskControl`),
    retry, reordering, history. Tested, not used by the UI yet.
-2. **Import as tasks**: the import queue becomes tasks, with progress bars and the bar at the
-   bottom of every page; replaces `LongOperationKind::Import`.
-3. **Convert, export, scrub, checksums as tasks**, then `LongOperations` is removed; the task
-   manager page with pause, cancel, retry, reorder and the history; unfinished tasks after a restart.
-4. **Stay awake** while a task is running (macOS, Windows, Linux) (`claude/m1a-stay-awake`,
-   cloud session 2026-10-30): `src/util/keep_awake.rs`, held while a long operation runs. Once
-   both this and pull request 2 are in `main`, `AppState::is_moving_data` also asks
-   `tasks.is_busy()` (the second of the two to be merged adds it). To try on the Mac.
+2. **Import as tasks** (#5, cloud session 2026-10-30, merged): the import queue
+   becomes tasks, with progress bars and the bar at the bottom of every page; replaces
+   `LongOperationKind::Import`. Imports start when added (no "Start importing" any more); pause,
+   cancel (removes what was written) and retry per task; the Tasks page already lists every
+   task and the history. Still to try on the Mac with real games (test log).
+3. **Convert, export, scrub, checksums as tasks** (#10, cloud session 2026-10-30, merged):
+   `LongOperations` is removed; waiting tasks can be moved earlier
+   or later on the Tasks page. Still to try on the Mac (test log).
+4. **Stay awake** while a task is running (macOS, Windows, Linux) (#7, cloud session
+   2026-10-30): `src/util/keep_awake.rs`, held while `tasks.is_busy()`. To try on the Mac.
+5. **Unfinished tasks after a restart**: listed again, to resume or drop. Split off from 3,
+   which was big enough; needs the jobs saved in the data folder.
 
 Every longer action – import, copy to a drive, install on a console, convert, export, scrub,
 checksums, downloads, scans, later unpacking and injecting – becomes a **task** in one task manager.
@@ -207,6 +201,51 @@ what the console expects.
   already does. Found when copying the WBFS backup to the freshly formatted WiiGames drive, where
   the Finder refuses files over 4 GiB.
 
+### M1d · SD cards: manage, back up, set up (M)
+
+The SD card of a 3DS, a Wii or a Wii U becomes a device in My Consoles, like a drive: the app
+sees what is on it, keeps backups of it and sets up new cards. Builds on M1b (format and layout).
+
+**Recognising a card and its console**
+- By its content, not its name: 3DS (`Nintendo 3DS/`, `boot.firm`, `luma/`, `3ds/`, `cias/`),
+  Wii (`apps/`, `private/wii/`, `wad/`, BootMii's `bootmii/`), Wii U (`wiiu/`,
+  `wiiu/environments/aroma/`, `wiiu/apps/`, `wiiu/plugins/`), or a mix (a Wii U card often
+  holds vWii homebrew too).
+- The card remembers its console (name in My Consoles), so a card in the computer shows up under
+  the right console.
+
+**Managing**
+- What is on it, grouped: CFW or environment and its version (Luma3DS, Aroma), homebrew apps,
+  plugins, CIAs and WADs waiting to be installed, saves, free space; the M1b check of file system
+  and cluster size.
+- Update homebrew from its official source (Open Shop Channel, Universal-DB, the projects'
+  GitHub releases), remove apps, move games and apps between card and library.
+
+**Backing up**
+- One backup per card and date in the data folder (or a chosen folder), as a plain copy of the
+  files; restoring to the same or to a new, larger card (moving to a bigger card is the common
+  case).
+- **Irreplaceable files** are marked and their absence warned about, because without them a
+  broken console can't be restored:
+  - 3DS: the NAND backup and `essential.exefs` from GodMode9 (`gm9/out/`); the content of
+    `Nintendo 3DS/` is encrypted for this one console and only works on it.
+  - Wii: BootMii's `nand.bin` and `keys.bin`.
+  - Wii U: the NAND, `otp.bin` and `seeprom.bin` dumps.
+- These files belong to the console and stay on the computer; they are never uploaded or shared.
+
+**Setting up**
+- A new card for a console that is already modded: M1b's layout plus the homebrew the console
+  uses, or the content of a backup.
+
+**Models and revisions**
+- 3DS family: Old 3DS, Old 3DS XL and 2DS take a full-size SD card; New 3DS, New 3DS XL and
+  New 2DS XL a microSD card (behind a screwed cover on the New 3DS). The app asks for the model
+  once and remembers it with the console.
+- Wii: RVL-001 (with GameCube ports), RVL-101 "Family Edition" (no GameCube ports, so no
+  Nintendont from discs), RVL-201 Wii mini (**no SD slot**: USB only, so its "card" is a USB
+  stick).
+- Wii U: one SD slot for Wii U and vWii homebrew; game drives are WFS (see M1b).
+
 ### M2 · Game databases (M)
 
 - Import and keep up to date: libretro-database (No-Intro, Redump), GameTDB (Wii, GameCube,
@@ -296,6 +335,60 @@ deletes files runs as a task (M1a) and shows a preview first.
 - Saves come from the consoles (3DS M6, Wii M7, Wii U M8) and from save folders on drives
   and SD cards; until then the tab shows the save files found in the sources.
 
+### M6a · Softmod wizard (L)
+
+A wizard in My Consoles that takes an unmodded console to custom firmware or the Homebrew Channel,
+**following the community guides step by step instead of replacing them**:
+[3ds.hacks.guide](https://3ds.hacks.guide), [wii.hacks.guide](https://wii.hacks.guide) and
+[wiiu.hacks.guide](https://wiiu.hacks.guide). Order: 3DS first (with M6), then Wii (M7) and Wii U
+with vWii (M8).
+
+**How it works**
+- The guides stay the reference: every step names and links its page in the guide; the wizard
+  doesn't copy their text (they change, and they are their authors' work). If the guide and the
+  wizard disagree, the wizard says to follow the guide.
+- The computer's part is automated: preparing the SD card (M1b, M1d), downloading the files a
+  step needs from their official sources at that moment, checking that they arrived complete, and
+  later reading back what the console wrote (backups).
+- The console's part is shown, not done: the wizard says what to do on the console, links the
+  guide's page and waits for "done" or reads the result from the card.
+- It can be left and resumed: the state is read from the card (e.g. `boot.firm` and `luma/` there:
+  boot9strap is installed).
+- Nothing that isn't freely distributable is bundled; no keys, no firmware, no piracy tools (the
+  guides leave those out too).
+
+**Step 1: which console exactly** – the method depends on model, revision, system version and
+region, so the wizard asks first (with pictures and where to read it on the console):
+- 3DS: model (Old 3DS / Old 3DS XL / 2DS / **New 3DS / New 3DS XL / New 2DS XL**), system
+  version (e.g. `11.17.0-50E`) and region. New models have the faster CPU and the microSD slot;
+  some methods work only on New models (super-skaterhax: New 3DS and New 2DS from 11.15.0 to
+  11.17.0), others on all models (MSET9).
+- Wii: RVL-001, RVL-101 Family Edition or RVL-201 Wii mini; System Menu version and region. The
+  guide picks the exploit from that: e.g. str2hax (needs internet, no SD card), Bluebomb
+  (Bluetooth; the only way on the Wii mini, which the guide warns is easy to brick).
+- Wii U: system version and region; the guide's way to Aroma (e.g. the browser exploit), then
+  PayloadLoader for a permanent setup, then vWii through wii.hacks.guide.
+
+**Step 2: the method** – chosen from a table of model × version → guide page, kept as a data file
+in the app and checked against the guides before each release. A console that doesn't fit the
+table (a newer system version, an unknown revision) gets no guess: the wizard sends the user to the
+guide's start page.
+
+**Step 3: backups first** – as soon as the console can make them (GodMode9's NAND backup and
+`essential.exefs`, BootMii's NAND backup, the Wii U's NAND, OTP and SEEPROM), the wizard asks for
+them and copies them into the console's backups (M1d). It doesn't go on without them.
+
+**Step 4: afterwards** – the usual homebrew (from M1d) and the companion app (vcinject Link on the
+3DS, later the Wii and Wii U ones), then the console is added to My Consoles.
+
+**Safety**
+- The app never writes to a console's NAND and never runs a step that can brick it; those stay on
+  the console, done by the user with the guide open.
+- Warnings the guides give (e.g. "don't update", "don't follow video guides for the Wii mini") are
+  shown at the step they belong to.
+- Tested on real consoles of each model the table names before it is released for that model;
+  every test goes into the test log.
+
 ### M6 · The rest of the 3DS (M–L)
 
 - Saves: back up and restore.
@@ -361,3 +454,8 @@ its own.
 - Web UI: which framework (server-rendered with htmx, or a single-page app), and whether the
   desktop app can also be reached through it (see M9).
 - How much of the core can be split from iced without slowing down the milestones before M9.
+- Softmod wizard (M6a): the method table per model and system version has to be checked against
+  the live guides; the cloud sessions can't reach the guides (network settings), only search
+  results about them (2026-10-30). Their pages are linked, not copied; whether short step titles
+  may be shown depends on the guides' licence, to check.
+- Wii mini (M1d, M6a): the app has to handle a USB stick in place of the SD card.

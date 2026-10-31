@@ -4,16 +4,14 @@
 use crate::{
     config::{Config, ThemePreference},
     consoles::{self, ConsolesState},
-    games::{
-        ImportEntry, covers::download_ui_covers, game::Game, games_state::GamesState,
-        import::import_game,
-    },
+    games::{covers::download_ui_covers, game::Game, games_state::GamesState},
     homebrew::{self, homebrew_state::HomebrewState},
+    jobs::Job,
     library::LibraryState,
-    long_operation::{LongOperationKind, LongOperationState, LongOperations},
     message::Message,
     notifications::{notification::Notification, notification_list::NotificationList},
     osc::{self, osc_state::OscState},
+    tasks::{TaskId, TaskManager},
     toolbox::{ToolContext, ToolboxItem},
     ui::{modals::Modal, pages::Page, theme},
     util::{self, drive_state::DriveState, keep_awake::KeepAwake, updates},
@@ -34,6 +32,7 @@ use smol::{
     net::TcpStream,
 };
 use std::{
+    collections::HashMap,
     ffi::OsStr,
     io::SeekFrom,
     path::{Path, PathBuf},
@@ -50,8 +49,8 @@ pub struct AppState {
     pub homebrew: HomebrewState,
     pub current_page: Page,
     pub current_modal: Option<Modal>,
-    pub long_operations: LongOperations,
-    pub import_queue: Vec<ImportEntry>,
+    pub tasks: TaskManager,
+    pub jobs: HashMap<TaskId, Job>,
     pub osc_contents: OscState,
     pub animation_state: bool,
     pub new_version: Option<Version>,
@@ -73,13 +72,13 @@ impl AppState {
                     homebrew: HomebrewState::NotLoaded,
                     current_page: Page::Library,
                     current_modal: None,
-                    import_queue: Vec::new(),
+                    tasks: TaskManager::new(),
+                    jobs: HashMap::new(),
                     osc_contents: OscState::NotLoaded,
                     animation_state: false,
                     new_version: None,
                     consoles: ConsolesState::default(),
                     library: LibraryState::default(),
-                    long_operations: LongOperations::new(),
                     keep_awake: KeepAwake::default(),
                 },
                 Task::batch([
@@ -129,7 +128,7 @@ impl AppState {
 
     /// Whether data moves right now, so the computer should stay awake.
     pub fn is_moving_data(&self) -> bool {
-        self.long_operations.is_any_running()
+        self.tasks.is_busy()
     }
 
     pub fn selected_drive(&self) -> Option<&consoles::Drive> {
@@ -256,24 +255,39 @@ impl AppState {
         )
     }
 
-    pub fn trigger_import_task(&mut self) -> Task<Message> {
-        if let Some(entry) = self.import_queue.pop() {
-            self.long_operations.set(
-                LongOperationKind::Import,
-                LongOperationState::Progress(format!("⤓  Importing {}", entry.meta().game_title())),
-            );
-
-            Task::stream(import_game(entry, self.config.clone(), self.drive.clone()))
-                .map(|op_state| Message::SetLongOperationState(LongOperationKind::Import, op_state))
-        } else {
-            self.notifications
-                .push(Notification::info("Import queue is empty"));
-            Task::none()
-        }
+    /// Adds a job to the task manager; [`Self::start_ready_tasks`] starts it.
+    pub fn add_job(&mut self, job: Job) {
+        let id = self.tasks.add(job.title(), job.resources());
+        self.jobs.insert(id, job);
     }
 
-    pub fn add_to_import_queue(&mut self, mut paths: Vec<ImportEntry>) {
-        self.import_queue.append(&mut paths);
+    /// Starts every waiting task whose resources are free.
+    pub fn start_ready_tasks(&mut self) -> Task<Message> {
+        let started = self.tasks.start_ready();
+
+        Task::batch(started.into_iter().filter_map(|id| {
+            let job = self.jobs.get(&id)?.clone();
+            let control = self.tasks.get(id)?.control();
+
+            Some(Task::stream(job.run(control)).map(move |event| Message::TaskEvent(id, event)))
+        }))
+    }
+
+    /// Whether the game in `game_dir` waits for or is being scrubbed.
+    pub fn is_scrubbing(&self, game_dir: &Path) -> bool {
+        self.tasks.iter().any(|task| {
+            !task.state().is_finished()
+                && self
+                    .jobs
+                    .get(&task.id())
+                    .is_some_and(|job| job.scrubs(game_dir))
+        })
+    }
+
+    /// Removes the finished tasks and their jobs.
+    pub fn clear_task_history(&mut self) {
+        self.tasks.clear_history();
+        self.jobs.retain(|id, _| self.tasks.get(*id).is_some());
     }
 
     pub fn reload_cover(&mut self, game_id: GameID) {
