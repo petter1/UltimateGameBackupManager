@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   progress bars, pause, cancel and retry; several exports can wait in line, and waiting tasks can
   be moved earlier or later. A cancelled conversion or export removes its half-written file; a
   cancelled scrub leaves the game as it was.
+- 🔔 The same message again (e.g. one "Read-only file system" per file) is counted in one
+  notification ("245×") instead of piling up; the log file still gets every one.
 - 🔍 "Hash mismatch" says why when it can: a Wii dump without its update partition (often removed
   when making a WBFS) can't match the disc, though that alone doesn't stop the game from working.
 
