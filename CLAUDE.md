@@ -49,8 +49,11 @@ start from `main` and only see what is there, so the update goes to `main` in it
 - **M0b**: done (#18, tested on the Mac 2026-10-31).
 - **M1a+, notifications and log**: first step, pull request **#20**, branch
   `claude/m1a-plus-group-notifications`, open: the same message again is counted ("245×") in
-  one toast. Waits for the Mac test (item 4 in "Waiting for the Mac"). Next steps: system
-  notifications, the notification center with the log (see the roadmap).
+  one toast. Second step, pull request **#22**, branch `claude/m1a-plus-system-notifications`,
+  open: system notifications (`notify-rust`) for a task done or failed and an update ready while
+  the window is in the background, with a setting. Both wait for the Mac test (item 4 in
+  "Waiting for the Mac"); #20 and #22 (and #7, a field in `AppState`) touch the same lines,
+  the one merged later keeps both. Next: the notification center with the log (see the roadmap).
 - Branches to delete on GitHub: `feature/task-manager` once #11 is merged. Sessions on the
   maintainer's Mac can delete remote branches (done for the earlier ones on 2026-10-31).
 
