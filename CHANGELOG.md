@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   opens the log file.
 - 🔍 "Hash mismatch" says why when it can: a Wii dump without its update partition (often removed
   when making a WBFS) can't match the disc, though that alone doesn't stop the game from working.
+- ☕ The computer doesn't go to sleep from idleness while games are imported, converted,
+  exported, scrubbed or checked (macOS: `caffeinate`, Linux: `systemd-inhibit`, Windows:
+  `SetThreadExecutionState`). The screen may still turn off.
 
 ## [v6.1.9] - 2026-10-21
 

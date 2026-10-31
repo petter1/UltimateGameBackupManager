@@ -93,7 +93,10 @@ Each milestone ends in something usable. They are in the planned order; sizes ar
 3. **Convert, export, scrub, checksums as tasks** (#10, cloud session 2026-10-30, merged):
    `LongOperations` is removed; waiting tasks can be moved earlier
    or later on the Tasks page. Still to try on the Mac (test log).
-4. **Stay awake** while a task is running (macOS, Windows, Linux).
+4. **Stay awake** while a task is running (macOS, Windows, Linux) (#7, cloud session
+   2026-10-30): `src/util/keep_awake.rs`, held while `tasks.is_busy()` (a paused task lets go).
+   Tried on the Mac 2026-10-31: `caffeinate` runs only while a task runs; the long sleep test
+   (item 4 in "Waiting for the Mac") is still due.
 5. **Unfinished tasks after a restart**: listed again, to resume or drop. Split off from 3,
    which was big enough; needs the jobs saved in the data folder.
 
