@@ -7,16 +7,17 @@ use crate::{
     link::{
         client::Link,
         discovery::{self, Found},
-        protocol::{Console, Info, PORT, Title, n3ds},
+        protocol::{Console, Info, PORT, Title, command, n3ds},
     },
     n3ds::smdh,
+    tasks::{self, TaskControl, WorkerEvent},
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 use iced::widget::image;
 use serde::{Deserialize, Serialize};
-use smol::fs;
+use smol::{fs, stream::Stream};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
     time::Duration,
@@ -35,6 +36,9 @@ pub const VCINJECT_LINK_VERSION: u32 = 13;
 pub struct ConsoleEntry {
     pub addr: SocketAddr,
     pub info: Info,
+    /// What was installed when the console was last read, kept while it is away
+    #[serde(default)]
+    pub titles: Vec<Title>,
     #[serde(skip)]
     pub online: bool,
     #[serde(skip)]
@@ -46,6 +50,7 @@ impl ConsoleEntry {
         let mut entry = Self {
             addr,
             info,
+            titles: Vec::new(),
             online,
             label: String::new(),
         };
@@ -104,7 +109,12 @@ pub struct ConsolesState {
     pub entries: Vec<ConsoleEntry>,
     /// The console whose titles are shown
     pub selected: Option<SocketAddr>,
+    /// Titles with names and icons; the remembered ones until a console is read again
     pub titles: HashMap<SocketAddr, TitlesState>,
+    /// Consoles read since they came online
+    pub fresh: HashSet<SocketAddr>,
+    /// Consoles being read right now
+    pub reading: HashSet<SocketAddr>,
     pub drives: Vec<Drive>,
 }
 
@@ -177,45 +187,83 @@ pub async fn load_drives(paths: Vec<PathBuf>) -> Vec<Drive> {
 }
 
 impl ConsolesState {
-    /// Online consoles whose titles haven't been read yet
+    /// Online consoles whose titles haven't been read since they came online
     pub fn without_titles(&self) -> Vec<SocketAddr> {
         self.entries
             .iter()
             .filter(|entry| entry.online && entry.info.console() == Some(Console::N3ds))
             .map(|entry| entry.addr)
-            .filter(|addr| !self.titles.contains_key(addr))
+            .filter(|addr| !self.fresh.contains(addr) && !self.reading.contains(addr))
             .collect()
     }
 
-    /// The online consoles that have a title installed
+    /// The consoles that have a title installed, as last read: also those switched off
     pub fn having_title(&self, title_id: u64) -> impl Iterator<Item = &ConsoleEntry> {
         self.entries.iter().filter(move |entry| {
-            entry.online
-                && matches!(self.titles.get(&entry.addr), Some(TitlesState::Loaded(titles))
-                    if titles.iter().any(|t| t.title.id == title_id))
+            matches!(self.titles.get(&entry.addr), Some(TitlesState::Loaded(titles))
+                if titles.iter().any(|t| t.title.id == title_id))
         })
+    }
+
+    /// Takes the titles just read from a console and remembers them
+    pub fn set_titles(&mut self, addr: SocketAddr, result: Result<Vec<InstalledTitle>, String>) {
+        self.reading.remove(&addr);
+        // also after an error, so that a console isn't asked again and again
+        self.fresh.insert(addr);
+
+        match result {
+            Ok(titles) => {
+                if let Some(entry) = self.entries.iter_mut().find(|entry| entry.addr == addr) {
+                    entry.titles = titles.iter().map(|t| t.title.clone()).collect();
+                }
+                self.titles.insert(addr, TitlesState::Loaded(titles));
+            }
+            // what was read before stays
+            Err(_) if matches!(self.titles.get(&addr), Some(TitlesState::Loaded(_))) => {}
+            Err(e) => {
+                self.titles.insert(addr, TitlesState::Failed(e));
+            }
+        }
     }
 
     pub fn known_addresses(&self) -> Vec<IpAddr> {
         self.entries.iter().map(|entry| entry.addr.ip()).collect()
     }
 
-    pub fn set_known(&mut self, entries: Vec<ConsoleEntry>) {
-        self.entries = entries
+    pub fn set_known(&mut self, known: Vec<(ConsoleEntry, Vec<InstalledTitle>)>) {
+        self.entries = known
             .into_iter()
-            .map(|entry| ConsoleEntry::new(entry.addr, entry.info, false))
+            .map(|(entry, titles)| {
+                if !titles.is_empty() {
+                    self.titles.insert(entry.addr, TitlesState::Loaded(titles));
+                }
+                let mut known = ConsoleEntry::new(entry.addr, entry.info, false);
+                known.titles = entry.titles;
+                known
+            })
             .collect();
     }
 
-    /// Takes the result of a search: answering consoles are online, the others offline
-    pub fn merge(&mut self, found: Vec<Found>) {
+    /// Takes the result of a search: answering consoles are online, the others offline,
+    /// except `busy` ones, which may not answer while they work on a task
+    pub fn merge(&mut self, found: Vec<Found>, busy: &[SocketAddr]) {
         for entry in &mut self.entries {
-            entry.online = false;
+            entry.online = busy.contains(&entry.addr);
         }
 
         for found in found {
             match self.entries.iter_mut().find(|entry| entry.is(&found)) {
-                Some(entry) => *entry = ConsoleEntry::new(found.addr, found.info, true),
+                Some(entry) => {
+                    // the remembered titles move along when the address changed
+                    if entry.addr != found.addr
+                        && let Some(titles) = self.titles.remove(&entry.addr)
+                    {
+                        self.titles.insert(found.addr, titles);
+                    }
+                    let titles = std::mem::take(&mut entry.titles);
+                    *entry = ConsoleEntry::new(found.addr, found.info, true);
+                    entry.titles = titles;
+                }
                 None => self
                     .entries
                     .push(ConsoleEntry::new(found.addr, found.info, true)),
@@ -224,6 +272,13 @@ impl ConsolesState {
 
         self.entries
             .sort_by(|a, b| b.online.cmp(&a.online).then(a.label.cmp(&b.label)));
+
+        // what is on a console may change while it is away: read it again when it is back
+        for entry in &self.entries {
+            if !entry.online {
+                self.fresh.remove(&entry.addr);
+            }
+        }
     }
 }
 
@@ -231,18 +286,46 @@ fn path(data_dir: &Path) -> PathBuf {
     data_dir.join(FILENAME)
 }
 
-pub async fn load(data_dir: &Path) -> Vec<ConsoleEntry> {
+/// The remembered consoles, with their titles as last read (names and icons from the cache)
+pub async fn load(data_dir: &'static Path) -> Vec<(ConsoleEntry, Vec<InstalledTitle>)> {
     let Ok(contents) = fs::read_to_string(path(data_dir)).await else {
         return Vec::new();
     };
+    let entries: Vec<ConsoleEntry> = serde_json::from_str(&contents).unwrap_or_default();
 
-    serde_json::from_str(&contents).unwrap_or_default()
+    smol::unblock(move || {
+        entries
+            .into_iter()
+            .map(|entry| {
+                let mut titles = entry
+                    .titles
+                    .iter()
+                    .map(|title| {
+                        let smdh = std::fs::read(smdh_cache_path(data_dir, title)).ok();
+                        installed_title(title.clone(), smdh.as_deref())
+                    })
+                    .collect::<Vec<_>>();
+                titles.sort_by_key(|title| title.name.to_lowercase());
+                (entry, titles)
+            })
+            .collect()
+    })
+    .await
 }
 
 pub async fn save(data_dir: &Path, entries: Vec<ConsoleEntry>) -> Result<()> {
     let contents = serde_json::to_string_pretty(&entries)?;
     fs::write(path(data_dir), contents).await?;
     Ok(())
+}
+
+/// A quick look for consoles that came or went, without scanning every address
+pub async fn watch(known: Vec<IpAddr>) -> Result<Vec<Found>, String> {
+    smol::unblock(move || {
+        discovery::discover(DISCOVERY_TIMEOUT, &known, PORT)
+            .map_err(|e| format!("Searching for consoles failed: {e}"))
+    })
+    .await
 }
 
 /// Asks the network; when nobody answers, tries every address of the /24
@@ -339,6 +422,42 @@ fn installed_title(title: Title, smdh: Option<&[u8]>) -> InstalledTitle {
     }
 }
 
+/// Installs a CIA on a 3DS as a task: progress in bytes, pause and cancel through `control`.
+pub fn install_cia(
+    cia: PathBuf,
+    name: String,
+    addr: SocketAddr,
+    control: TaskControl,
+) -> impl Stream<Item = WorkerEvent> {
+    tasks::spawn_blocking(move |reporter| {
+        let result = (|| -> Result<()> {
+            let mut link = Link::connect(addr)?;
+            let info = link.info()?;
+
+            let file = std::fs::File::open(&cia)
+                .with_context(|| format!("Could not open {}", cia.display()))?;
+            let size = file.metadata()?.len();
+            let reader = std::io::BufReader::new(file);
+
+            let message = format!("Installing {name}");
+            let on_progress = |sent| {
+                control.checkpoint().map_err(std::io::Error::other)?;
+                reporter.progress(sent, Some(size), || message.clone());
+                Ok(())
+            };
+            if info.supports(command::INSTALL_STREAM) {
+                link.install_stream(n3ds::LOCATION_SD, reader, size, on_progress)
+            } else {
+                link.install_legacy(n3ds::LOCATION_SD, reader, size, on_progress)
+            }
+        })();
+
+        result
+            .map(|()| format!("Installed {name}"))
+            .map_err(|e| e.to_string())
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -353,19 +472,60 @@ mod tests {
     #[test]
     fn merge_recognises_a_console_under_a_new_address() {
         let mut state = ConsolesState::default();
-        state.merge(vec![
-            found("10.0.0.2", "id=AB\nname=Petter\nmodel=1"),
-            found("10.0.0.3", "console=wii"),
-        ]);
+        state.merge(
+            vec![
+                found("10.0.0.2", "id=AB\nname=Petter\nmodel=1"),
+                found("10.0.0.3", "console=wii"),
+            ],
+            &[],
+        );
         assert_eq!(state.entries[0].label, "Petter (3DS XL)");
 
-        state.merge(vec![found("10.0.0.9", "id=AB\nname=Petter\nmodel=1")]);
+        state.merge(vec![found("10.0.0.9", "id=AB\nname=Petter\nmodel=1")], &[]);
 
         assert_eq!(state.entries.len(), 2);
         assert!(state.entries[0].online);
         assert_eq!(state.entries[0].addr.ip().to_string(), "10.0.0.9");
         assert!(!state.entries[1].online);
         assert_eq!(state.entries[1].label, "Wii at 10.0.0.3");
+    }
+
+    #[test]
+    fn titles_are_remembered_while_a_console_is_away() {
+        let mut state = ConsolesState::default();
+        let petter = found("10.0.0.2", "id=AB\nname=Petter\nmodel=1");
+        let addr = petter.addr;
+        state.merge(vec![petter], &[]);
+        assert_eq!(state.without_titles(), [addr]);
+
+        let title = Title {
+            id: 0x0004_0000_0012_3400,
+            size: 1,
+            version: 0,
+            location: n3ds::LOCATION_SD,
+            product_code: String::new(),
+        };
+        state.set_titles(addr, Ok(vec![installed_title(title.clone(), None)]));
+        assert_eq!(state.entries[0].titles, std::slice::from_ref(&title));
+        assert!(state.without_titles().is_empty());
+
+        // installing: vcinject Link doesn't answer the search
+        state.merge(Vec::new(), &[addr]);
+        assert!(state.entries[0].online);
+
+        // switched off: still known to have the title, and read again when it is back
+        state.merge(Vec::new(), &[]);
+        assert!(!state.entries[0].online);
+        assert_eq!(state.having_title(title.id).count(), 1);
+
+        state.merge(vec![found("10.0.0.7", "id=AB\nname=Petter\nmodel=1")], &[]);
+        let new_addr = state.entries[0].addr;
+        assert_eq!(state.having_title(title.id).count(), 1);
+        assert_eq!(state.without_titles(), [new_addr]);
+
+        // a failed read keeps what was read before
+        state.set_titles(new_addr, Err("timeout".into()));
+        assert_eq!(state.having_title(title.id).count(), 1);
     }
 
     #[test]

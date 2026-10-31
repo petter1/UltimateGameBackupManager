@@ -20,6 +20,8 @@ use semver::Version;
 use std::{ffi::OsString, net::SocketAddr, path::PathBuf};
 use wii_disc_info::game_id::GameID;
 
+type InstalledTitles = Vec<InstalledTitle>;
+
 #[derive(Debug, Clone)]
 pub enum Message {
     Config(ConfigMessage),
@@ -82,8 +84,9 @@ pub enum Message {
     PickGameToConvert,
     ConvertGame(PathBuf, PathBuf),
     GotUpdate(Version),
-    GotKnownConsoles(Vec<ConsoleEntry>),
+    GotKnownConsoles(Vec<(ConsoleEntry, InstalledTitles)>),
     SearchConsoles,
+    WatchConsoles,
     GotConsoles(Result<Vec<Found>, String>),
     OpenConsole(SocketAddr),
     LoadConsoleTitles(SocketAddr),
@@ -97,6 +100,7 @@ pub enum Message {
     AddRomSource(PathBuf),
     RemoveRomSource(PathBuf),
     CopyToDrive(PathBuf),
+    InstallOnConsole(PathBuf, SocketAddr),
     GotDrives(Vec<Drive>),
     OpenDrive(PathBuf, Page),
     ForgetDrive(PathBuf),

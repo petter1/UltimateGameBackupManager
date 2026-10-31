@@ -280,7 +280,16 @@ impl AppState {
                     _ => Task::none(),
                 };
 
-                Task::batch([self.start_ready_tasks(), refresh])
+                let cancelled = self
+                    .tasks
+                    .get(id)
+                    .is_some_and(|task| *task.state() == TaskState::Cancelled);
+                let titles = match self.jobs.get(&id).and_then(Job::changes_titles_on) {
+                    Some(addr) if !cancelled => self.update(Message::LoadConsoleTitles(addr)),
+                    _ => Task::none(),
+                };
+
+                Task::batch([self.start_ready_tasks(), refresh, titles])
             }
             Message::CancelTask(id) => {
                 self.tasks.cancel(id);
@@ -504,6 +513,21 @@ impl AppState {
                     self.load_drives_task(),
                 ])
             }
+            Message::WatchConsoles => {
+                if self.consoles.searching {
+                    return Task::none();
+                }
+                // runs every few seconds, so a failure is only logged, not shown
+                Task::perform(consoles::watch(self.consoles.known_addresses()), |result| {
+                    match result {
+                        Ok(found) => Message::GotConsoles(Ok(found)),
+                        Err(e) => {
+                            eprintln!("WARN: {e}");
+                            Message::NoOp
+                        }
+                    }
+                })
+            }
             Message::GotDrives(drives) => {
                 self.consoles.drives = drives;
                 Task::none()
@@ -533,12 +557,8 @@ impl AppState {
 
                 match result {
                     Ok(found) => {
-                        self.consoles.merge(found);
-                        let titles = if self.current_page == Page::Library {
-                            self.load_missing_titles_task()
-                        } else {
-                            Task::none()
-                        };
+                        self.consoles.merge(found, &self.busy_consoles());
+                        let titles = self.load_missing_titles_task();
                         let data_dir = self.data_dir;
                         let entries = self.consoles.entries.clone();
                         Task::batch([
@@ -557,9 +577,18 @@ impl AppState {
                 self.update(Message::LoadConsoleTitles(addr))
             }
             Message::LoadConsoleTitles(addr) => {
-                self.consoles
-                    .titles
-                    .insert(addr, consoles::TitlesState::Loading);
+                if !self.consoles.reading.insert(addr) {
+                    return Task::none();
+                }
+                // remembered titles stay visible while they are read again
+                if !matches!(
+                    self.consoles.titles.get(&addr),
+                    Some(consoles::TitlesState::Loaded(_))
+                ) {
+                    self.consoles
+                        .titles
+                        .insert(addr, consoles::TitlesState::Loading);
+                }
                 Task::perform(consoles::load_titles(self.data_dir, addr), move |res| {
                     Message::GotConsoleTitles(addr, res)
                 })
@@ -569,12 +598,12 @@ impl AppState {
                 Task::none()
             }
             Message::GotConsoleTitles(addr, result) => {
-                let titles = match result {
-                    Ok(titles) => consoles::TitlesState::Loaded(titles),
-                    Err(e) => consoles::TitlesState::Failed(e),
-                };
-                self.consoles.titles.insert(addr, titles);
-                Task::none()
+                self.consoles.set_titles(addr, result);
+                let entries = self.consoles.entries.clone();
+                Task::perform(consoles::save(self.data_dir, entries), |res| match res {
+                    Ok(()) => Message::NoOp,
+                    Err(e) => Message::Notify(e.into()),
+                })
             }
             Message::ScanLibrary => {
                 self.library.scanning = true;
@@ -641,6 +670,30 @@ impl AppState {
                     Ok(entry) => Message::PickedGames(vec![entry]),
                     Err(e) => Message::Notify(e.into()),
                 })
+            }
+            Message::InstallOnConsole(cia, addr) => {
+                let Some(entry) = self
+                    .consoles
+                    .entries
+                    .iter()
+                    .find(|entry| entry.addr == addr)
+                else {
+                    return Task::none();
+                };
+                let name = self
+                    .library
+                    .items
+                    .iter()
+                    .find(|item| item.path == cia)
+                    .map_or_else(|| cia.display().to_string(), |item| item.name.clone());
+
+                self.add_job(Job::Install {
+                    cia,
+                    name,
+                    addr,
+                    console: entry.label.clone(),
+                });
+                self.start_ready_tasks()
             }
             Message::GotUpdate(new_version) => {
                 self.new_version = Some(new_version);

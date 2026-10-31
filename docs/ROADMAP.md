@@ -32,6 +32,12 @@ each item is ticked off here (and gets its test log entry) when done.
    check the hash of a known good dump. Test log entry.
 4. **Every later M1a pull request**: try it on the Mac before merging (the stay-awake one with a
    long import and the Mac left alone until it would sleep).
+5. **M1, install on the 3DS** (branch `claude/m1-3ds-install-and-consoles`, before merging):
+   with "petter1" running vcinject Link, open the Games page without visiting My Consoles; switch
+   the 3DS on afterwards: it must show up within about 15 seconds. Install a CIA from the library
+   (progress on the computer and on the 3DS), pause and resume it, cancel a second one, and check
+   that the title list is read again afterwards. Quit, switch the 3DS off, start again: the
+   library still marks its titles as on "petter1". Test log entry.
 
 ## How the app is meant to work
 
@@ -137,7 +143,11 @@ TWBM's notifications are toasts in the window that pile up (one per error, e.g. 
 ### M1 · Install on the 3DS over Wi-Fi (M)
 
 - "Install" on a CIA in the library: choose the 3DS; it runs as a task (M1a), with progress on the
-  computer and on the 3DS.
+  computer and on the 3DS. *Built, waiting for the Mac* (`claude/m1-3ds-install-and-consoles`):
+  one button per online 3DS, the console's connection is its own task resource.
+- Consoles are found in the background on every page (a light discovery every 15 seconds), and
+  what is installed on a console is remembered in `consoles.json`, so the library shows it also
+  while the console is off. *Built, same branch.*
 - Delete and launch titles from the console's title list.
 - Offer the update of vcinject Link when it is older than the app expects.
 

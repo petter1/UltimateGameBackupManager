@@ -6,6 +6,7 @@
 
 use crate::{
     config::Config,
+    consoles::install_cia,
     games::{
         ImportEntry, calc_sha1::calc_sha1, convert::convert_game, export::export_game, game::Game,
         import::import_game, scrub::scrub_game,
@@ -16,6 +17,7 @@ use crate::{
 use smol::stream::{Stream, StreamExt};
 use std::{
     ffi::OsStr,
+    net::SocketAddr,
     path::{Path, PathBuf},
 };
 
@@ -43,6 +45,13 @@ pub enum Job {
     Scrub { game: Game, mount_point: PathBuf },
     /// Checks a game's checksum against the known good dumps; only reads.
     Hash { game: Game, mount_point: PathBuf },
+    /// A CIA on a 3DS over vcinject Link; `console` is its name in My Consoles.
+    Install {
+        cia: PathBuf,
+        name: String,
+        addr: SocketAddr,
+        console: String,
+    },
 }
 
 /// The folder a file is in, standing for its drive: the task manager doesn't know mount points
@@ -65,6 +74,7 @@ impl Job {
             Self::Export { game, .. } => format!("Export {}", game.title()),
             Self::Scrub { game, .. } => format!("Scrub {}", game.title()),
             Self::Hash { game, .. } => format!("Check the hash of {}", game.title()),
+            Self::Install { name, console, .. } => format!("Install {name} on {console}"),
         }
     }
 
@@ -89,6 +99,8 @@ impl Job {
             Self::Scrub { mount_point, .. } | Self::Hash { mount_point, .. } => {
                 vec![Resource::Drive(mount_point.clone())]
             }
+            // the console is far slower than any disk, so reading the CIA doesn't wait for one
+            Self::Install { console, .. } => vec![Resource::Console(console.clone())],
         }
     }
 
@@ -97,7 +109,18 @@ impl Job {
         match self {
             Self::Import { config, .. } => Some(config.mount_point()),
             Self::Scrub { mount_point, .. } => Some(mount_point),
-            Self::Convert { .. } | Self::Export { .. } | Self::Hash { .. } => None,
+            Self::Convert { .. }
+            | Self::Export { .. }
+            | Self::Hash { .. }
+            | Self::Install { .. } => None,
+        }
+    }
+
+    /// The console whose titles change when the job is done.
+    pub fn changes_titles_on(&self) -> Option<SocketAddr> {
+        match self {
+            Self::Install { addr, .. } => Some(*addr),
+            _ => None,
         }
     }
 
@@ -120,6 +143,9 @@ impl Job {
             Self::Export { game, out_path, .. } => export_game(game, out_path, control).boxed(),
             Self::Scrub { game, .. } => scrub_game(game, control).boxed(),
             Self::Hash { game, .. } => calc_sha1(game, control).boxed(),
+            Self::Install {
+                cia, name, addr, ..
+            } => install_cia(cia, name, addr, control).boxed(),
         }
     }
 }
