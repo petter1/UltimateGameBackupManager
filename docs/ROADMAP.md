@@ -285,7 +285,11 @@ be fixed from a second copy, which the library knows about.
   have no update partition (*shortened*); the message now says so
   (`claude/m2b-explain-mismatch`). The other 16 have one and still don't match, e.g. Disney
   Planes Fire & Rescue [SQQPVZ]: SHA-1 `f0bce155…` against Redump's `28cacd91…` (Europe) – damaged,
-  zeroed update partition or a nod reconstruction issue; the H0–H3 check would tell. The
+  zeroed update partition or a nod reconstruction issue.
+- The H0–H3 check doesn't work on WBFS as it is: nod's `PartitionOptions::validate_hashes`
+  reports a bad H3 or H0 hash in the first megabytes of almost every WBFS on WiiGames (tried on
+  5 on 2026-10-31), most likely where WBFS left out unused block groups. It has to skip the
+  groups the image doesn't store, or it only works on full ISO/RVZ dumps. The
   GameCube ISOs on gamestation named after Redump are the next candidates (not hashed yet: the
   drive stopped answering during the try).
 
