@@ -172,6 +172,30 @@ pub async fn keep_valid_games(
         .collect::<Vec<_>>()
         .await;
 
+    drop_existing(&mut entries, existing_ids);
+    entries
+}
+
+/// Reads the discs of a bulk copy like [`keep_valid_games`], but also returns the files that
+/// couldn't be read, so they can be named.
+pub async fn read_import_entries(
+    paths: Vec<PathBuf>,
+    existing_ids: &[GameID],
+) -> (Vec<ImportEntry>, Vec<(PathBuf, anyhow::Error)>) {
+    let mut entries = Vec::new();
+    let mut unreadable = Vec::new();
+    for path in paths {
+        match ImportEntry::new(path.clone()).await {
+            Ok(entry) => entries.push(entry),
+            Err(e) => unreadable.push((path, e)),
+        }
+    }
+
+    drop_existing(&mut entries, existing_ids);
+    (entries, unreadable)
+}
+
+fn drop_existing(entries: &mut Vec<ImportEntry>, existing_ids: &[GameID]) {
     // remove duplicates
     entries.sort_unstable();
     entries.dedup();
@@ -183,8 +207,6 @@ pub async fn keep_valid_games(
         // if it's a dual disc, try anyways
         !exists || entry.is_multidisc()
     });
-
-    entries
 }
 
 #[cfg(test)]
@@ -255,5 +277,30 @@ mod tests {
 
         std::fs::write(game_dir.join("RTSP01.part0.iso"), b"").unwrap();
         assert!(entry.is_on_drive(&drive));
+    }
+
+    #[test]
+    fn a_bulk_copy_names_the_files_it_cant_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let good = dir.path().join("Good.iso");
+        let present = dir.path().join("Present.iso");
+        let broken = dir.path().join("Broken.iso");
+        gamecube_disc(&good, b"GTSE01", 0);
+        gamecube_disc(&present, b"GWME51", 0);
+        std::fs::write(&broken, b"not a disc").unwrap();
+        let existing = smol::block_on(ImportEntry::new(present.clone()))
+            .unwrap()
+            .meta
+            .game_id();
+
+        let (entries, unreadable) = smol::block_on(read_import_entries(
+            vec![good.clone(), present, broken.clone()],
+            &[existing],
+        ));
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].path(), good);
+        assert_eq!(unreadable.len(), 1);
+        assert_eq!(unreadable[0].0, broken);
     }
 }

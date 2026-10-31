@@ -29,14 +29,17 @@ pub fn library(state: &AppState) -> Element<'_, Message> {
             .width(200),
         space::horizontal(),
         library.scanning.then(|| text("Scanning…")),
-        (library.shown_drive_games().next().is_some()).then(|| tooltip(
-            my_button::<Message>()
-                .icon(Icon::HardDriveUpload)
-                .label("Copy all to drive")
-                .on_press(Message::CopyShownToDrive),
-            my_card("Copy the Wii and GameCube games shown here that aren't on the drive yet"),
-            tooltip::Position::Bottom
-        )),
+        library
+            .shown_drive_games()
+            .any(|item| !item.in_cloud && presence(item, state).is_empty())
+            .then(|| tooltip(
+                my_button::<Message>()
+                    .icon(Icon::HardDriveUpload)
+                    .label("Copy all to drive")
+                    .on_press(Message::CopyShownToDrive),
+                my_card("Copy the Wii and GameCube games shown here that aren't on the drive yet"),
+                tooltip::Position::Bottom
+            )),
         tooltip(
             my_button::<Message>()
                 .icon(Icon::RefreshCw)
