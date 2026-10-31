@@ -31,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ☕ The computer doesn't go to sleep from idleness while games are imported, converted,
   exported, scrubbed or checked (macOS: `caffeinate`, Linux: `systemd-inhibit`, Windows:
   `SetThreadExecutionState`). The screen may still turn off.
+- 💾 A drive that doesn't answer (a hung disk, or macOS still asking for access) no longer
+  empties the drive list in My Consoles: each drive is read on its own, and one that takes more
+  than 5 seconds says "Doesn't answer".
 
 ## [v6.1.9] - 2026-10-21
 
