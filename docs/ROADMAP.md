@@ -281,9 +281,13 @@ be fixed from a second copy, which the library knows about.
 - Maybe later: put a removed update partition back from another game of the same region whose
   partition is byte-identical.
 - First check that a Redump-exact dump matches at all: every WBFS on WiiGames tried on
-  2026-10-31 gave "mismatch" – probably the *shortened* case, as WBFS tools often drop the update
-  partition. The GameCube ISOs on gamestation named after Redump are the next
-  candidates (not hashed yet: the drive stopped answering during the try).
+  2026-10-31 gave "mismatch". Read with nod on 2026-10-31: 32 of the 48 Wii WBFS on WiiGames
+  have no update partition (*shortened*); the message now says so
+  (`claude/m2b-explain-mismatch`). The other 16 have one and still don't match, e.g. Disney
+  Planes Fire & Rescue [SQQPVZ]: SHA-1 `f0bce155…` against Redump's `28cacd91…` (Europe) – damaged,
+  zeroed update partition or a nod reconstruction issue; the H0–H3 check would tell. The
+  GameCube ISOs on gamestation named after Redump are the next candidates (not hashed yet: the
+  drive stopped answering during the try).
 
 ### M3 · Injects by content (M–L)
 
