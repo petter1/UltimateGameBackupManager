@@ -35,9 +35,11 @@ console, a real drive or a real collection can show.
 | Name | Kind | Details |
 | --- | --- | --- |
 | petter1 | 3DS | runs vcinject Link |
+| Petter1 | 3DS XL | runs vcinject Link; a second console, named like the 3DS in My Consoles |
 | WiiGames | Wii/GameCube USB drive | FAT32 (was NTFS, which macOS only reads) |
 | gamestation | drive | ROM source |
 | iCloud collection | ROM source | files only in iCloud aren't downloaded |
+| WIIRO | drive | read-only FAT32 disk image (`hdiutil attach -readonly`), for read-only tests |
 
 ## Entries
 
@@ -45,13 +47,13 @@ console, a real drive or a real collection can show.
 
 | | |
 | --- | --- |
-| **Device** | the Mac (macOS 27, display at 1×); the 3DS petter1, the drives WiiGames and WIIRO for the screenshot |
+| **Device** | the Mac (macOS 27, display at 1×); the 3DS petter1 (online) and the 3DS XL Petter1 (offline), the drives WiiGames and WIIRO for the screenshot |
 | **What** | M0b, own face: `.icns`, screenshot, icon on macOS; item 2 of "Waiting for the Mac" |
 | **Who** | petter1, with Claude |
 | **When** | 2026-10-31, `main` at 45202fc (debug build), macOS 27 |
 | **How** | `just icons` (resvg 0.49, ImageMagick, `iconutil`) for the `.icns`; the debug build put into a copy of `package/macos/App` as a `.app` and started; icon looked at in the Dock, ⌘-Tab, the About page and a Finder list (16 px). Screenshot of the window on My Consoles (`screencapture -iWo`), shrunk with `oxipng -o 4` |
 | **Why** | the fork still had TWBM's `.icns` and screenshot; cloud sessions have no macOS |
-| **Result** | ✅ New icon in the Dock, ⌘-Tab, the About page and Finder. The other generated files came out the same; only `icon.ico` differed in bytes with the newer ImageMagick (256 px layer stored as BMP, same pixels), so the old one stays. ⚠️ At 16 px (Finder list on a 1× display) the four letters blur into a square; 32 px reads fine. The maintainer keeps it. The screenshot is 1263×950 (1× display) instead of about 1800×1500; accepted |
+| **Result** | ⚠️ New icon in the Dock, ⌘-Tab, the About page and Finder. The other generated files came out the same; only `icon.ico` differed in bytes with the newer ImageMagick (256 px layer stored as BMP, same pixels), so the old one stays. ⚠️ At 16 px (Finder list on a 1× display) the four letters blur into a square; 32 px reads fine. The maintainer keeps it. The screenshot is 1263×950 (1× display) instead of about 1800×1500; accepted |
 | **Follow-up** | none |
 
 ### 2026-10-31 · WiiGames · import as tasks
