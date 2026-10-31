@@ -30,6 +30,9 @@ each item is ticked off here (and gets its test log entry) when done.
    from WiiGames at once (the second waits), move a waiting one earlier; scrub a Wii game with an
    update partition, then cancel a second scrub (the game must still start in USB Loader GX);
    check the hash of a known good dump. Test log entry.
+   Partly done 2026-10-31 (see the test log): waiting, moving earlier, cancelling and hashing
+   work, and a known good dump (Worms 3D) gives "Hash match"; still open: export, convert,
+   scrub, pause by hand.
 4. **Every later M1a pull request**: try it on the Mac before merging (the stay-awake one with a
    long import and the Mac left alone until it would sleep).
 
