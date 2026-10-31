@@ -26,64 +26,48 @@ what already exists, so no work is done twice:
 
 Handover between sessions; the session that changes the state updates this section. New sessions
 start from `main` and only see what is there, so the update goes to `main` in its own small
-`docs/` pull request (merged right away), not only in the feature branch. As of 2026-10-31:
+`docs/` pull request (merged right away), not only in the feature branch. As of 2026-10-31 (afternoon):
 
-- **M1a, task manager** (see the roadmap):
-  1. Core: merged (#4).
-  2. Import as tasks: merged (#5), tested on the Mac 2026-10-31. Disc named in the task title
-     of a game with several discs: merged (#15), confirmed on the Mac.
-  3. Convert, export, scrub and checksums as tasks, `LongOperations` removed, reordering: merged
-     (#10) before the test on the Mac. Partly tested 2026-10-31: queue, "Earlier", cancel, hash
-     work; export, convert and scrub still need the maintainer (item 3 in "Waiting for the
-     Mac"). A paused task shows no speed and counts as paused: merged (#27).
-  4. Stay awake: pull request **#7**, branch `claude/m1a-stay-awake`, open; held while
-     `tasks.is_busy()`. Tried on the Mac 2026-10-31: `caffeinate` runs only while a task runs.
-     The long sleep test is still due (on a Mac without Amphetamine or other sleep blockers).
-  5. Unfinished tasks after a restart: pull request **#13**, branch `claude/m1a-resume-tasks`,
-     open. Tried on the Mac 2026-10-31: works, with the fix for the missing Tasks icon after a
-     restart (21a8aec1); cleaning up leftovers on a real drive not tried. #11 and #13 each add a "Waiting for the Mac" item 5 and
-     touch `jobs.rs`: the one merged second renumbers its item and adds `SavedJob::Install`.
-- **M1, install on the 3DS**: pull request **#11**, branch `claude/m1-3ds-install-and-consoles`,
-  open: "Install" on a CIA as a task (`Job::Install`, `Resource::Console`), consoles found in
-  the background every 15 seconds (failures only logged), installed titles remembered in
-  `consoles.json`. Ported from the local branch `feature/task-manager`, which predates #4 and
-  has its own task manager; nothing else there is needed (its M1d roadmap is #8, staying awake
-  is #7). `main` merged in 2026-10-31. To check on the 3DS (see the Mac checklist): pausing an install holds
-  the TCP connection open, which Link may give up on (then Install tasks shouldn't offer Pause);
-  cancelling drops the connection, so check that no half-installed title is left. Waits for the Mac test (item 5 in "Waiting for the Mac" on that branch) before merging.
-- **M0b**: done (#18, tested on the Mac 2026-10-31).
-- A drive that doesn't answer no longer holds up the settings: merged (#28). Trying a build on
-  macOS: BUILDING.md (#29). New milestone M2b, explain and repair bad dumps (#26): WBFS dumps
-  never match the disc's hash.
-- A ROM source that doesn't answer (e.g. a hung disk) no longer holds up the library scan: each
-  source on its own thread, given up after 15 s without data, keeping its items from
-  `library.json`, with a warning: merged (#31), tried on the Mac with gamestation hung.
-- A disc already on the drive isn't imported again, from the dialog or by drag and drop: merged
-  (#33). This keeps #13's restart cleanup (it deletes every file with the game's prefix) from
-  removing a game that was there before. Open: picking the same game twice before its import
-  starts still queues two imports: fixed in pull request **#36** (`claude/no-double-import`),
-  open, not tried on the Mac.
-- A drive that doesn't answer (a hung disk, or macOS's access prompt for removable volumes, which
-  every re-signed test build triggers again) emptied the drive list in My Consoles: pull request
-  **#35** (`claude/drives-not-answering`), open, tried on the Mac.
-- **M2b, explain bad dumps**: first step, pull request **#38** (`claude/m2b-explain-mismatch`),
-  open: "Hash mismatch" says when the update partition is missing (32 of the 48 Wii WBFS on
-  WiiGames). nod's H0–H3 validation fails on WBFS as it is (see the roadmap).
-- **M1a+, notifications and log**: first step, pull request **#20**, branch
-  `claude/m1a-plus-group-notifications`, open: the same message again is counted ("245×") in
-  one toast; works on the Mac. Second step, pull request **#22**, branch `claude/m1a-plus-system-notifications`,
-  open: system notifications (`notify-rust`) for a task done or failed and an update ready while
-  the window is in the background, with a setting. Fixed 2026-10-31: an app opened in the
-  background never sent any (it assumed the focus). The banner is still not seen; a test build
-  may first need the notification permission; #20 and #22 (and #7, a field in `AppState`) touch the same lines,
-  the one merged later keeps both. Third step, pull request **#24**, branch
-  `claude/m1a-plus-notification-center`, stacked on #20 (merge #20 first): a Messages page with
-  every message since the start, a filter for warnings and errors, a search field (added
-  2026-10-31, not tried on the Mac), "Open log file"; works on the
-  Mac. Test log entries for these Mac tests: drafts in the M0b session's notes. Still open
-  for M1a+: see the roadmap.
-- Branches to delete on GitHub: `feature/task-manager` once #11 is merged. Sessions on the
-  maintainer's Mac can delete remote branches (done for the earlier ones on 2026-10-31).
+- **Merged 2026-10-31 after review** (all tried on the Mac before): #20 (the same message
+  counted, "245×"), #24 (Messages page; its search not tried on the Mac), #7 (stay awake while
+  `tasks.is_busy()`; the long sleep test is still due), #35 (a drive that doesn't answer stays in
+  the list as "Doesn't answer"; since the review, a drive whose earlier read still hangs isn't read
+  again), #38 (M2b first step: "Hash mismatch" says when the update partition is missing), #40
+  (test log of 2026-10-31).
+- **M1a, task manager**: core (#4), import (#5, #15), convert/export/scrub/hash (#10, #27)
+  merged. Export, convert, scrub and pause by hand still need the maintainer (item 3 in "Waiting
+  for the Mac"). Unfinished tasks after a restart: pull request **#13** (`claude/m1a-resume-tasks`),
+  open. Worked on the Mac, but the review changed a lot that touches files on the drive (an import
+  checks again when it starts that its disc isn't there yet; the cleanup keeps the files when the
+  source was removed; an unrestorable task stays listed; a damaged `tasks.json` entry is skipped
+  with a warning): try it again on the Mac before merging. #11 and #13 both touch `jobs.rs`: the
+  one merged second adds `SavedJob::Install` (`to_saved`, `leftovers`, `restore`) and renumbers
+  its "Waiting for the Mac" item 5.
+- **M1, install on the 3DS**: pull request **#11** (`claude/m1-3ds-install-and-consoles`), open,
+  not reviewed again yet: "Install" on a CIA as a task, consoles found every 15 seconds,
+  installed titles in `consoles.json`. To check on the 3DS: pausing an install holds the TCP
+  connection (Link may give up; then Install tasks shouldn't offer Pause); cancelling must not
+  leave a half-installed title.
+- **M1a+, notifications**: system notifications, pull request **#22**
+  (`claude/m1a-plus-system-notifications`), open, reviewed. The banner hasn't been seen on the Mac;
+  likely reasons from the review: notify-rust sends on macOS when the handle is dropped and ignores
+  errors there; mac-notification-sys falls back to `com.apple.Terminal` when the bundle id isn't
+  registered with Launch Services; the old `NSUserNotificationCenter` API (newer one: notify-rust
+  feature `preview-macos-un`, needs permission and a signed bundle). Still open for M1a+: see the
+  roadmap.
+- **Imports**: picking the same game twice before its import starts no longer queues two, and
+  Retry refuses a game already being imported: pull request **#36** (`claude/no-double-import`),
+  open, reviewed, not tried on the Mac.
+- **M1c, copy many**: "Copy all to drive", pull request **#41** (`claude/m1c-copy-many`, M0b
+  session), open; review findings sent to that session (relies on #36 against double queueing,
+  no free-space check, read-only drive checked late).
+- **M2b, explain and repair bad dumps** (#26): first step merged (#38). nod's H0–H3 validation
+  fails on WBFS as it is (see the roadmap). Open: only the first disc of a multi-disc game is
+  hashed.
+- A ROM source or drive that doesn't answer no longer holds up the library scan (#31) or the
+  settings (#28). Trying a build on macOS: BUILDING.md (#29); every re-signed test build asks again
+  for removable volumes access.
+- Branches to delete on GitHub: `feature/task-manager` once #11 is merged.
 
 ## Working with the maintainer
 

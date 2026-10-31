@@ -14,7 +14,7 @@ use crate::{
     tasks::{TaskId, TaskManager},
     toolbox::{ToolContext, ToolboxItem},
     ui::{modals::Modal, pages::Page, theme},
-    util::{self, drive_state::DriveState, updates},
+    util::{self, drive_state::DriveState, keep_awake::KeepAwake, updates},
 };
 use anyhow::{Context, Result};
 use iced::{
@@ -56,6 +56,11 @@ pub struct AppState {
     pub new_version: Option<Version>,
     pub consoles: ConsolesState,
     pub library: LibraryState,
+    /// The Messages page shows only warnings and errors.
+    pub messages_problems_only: bool,
+    /// Text the Messages page filters by, case-insensitive.
+    pub messages_search: String,
+    pub keep_awake: KeepAwake,
 }
 
 impl AppState {
@@ -78,6 +83,9 @@ impl AppState {
                     new_version: None,
                     consoles: ConsolesState::default(),
                     library: LibraryState::default(),
+                    messages_problems_only: false,
+                    messages_search: String::new(),
+                    keep_awake: KeepAwake::default(),
                 },
                 Task::batch([
                     Task::perform(Config::load(data_dir), Message::GotConfig),
@@ -122,6 +130,11 @@ impl AppState {
                 .into_iter()
                 .map(|addr| Task::done(Message::LoadConsoleTitles(addr))),
         )
+    }
+
+    /// Whether data moves right now, so the computer should stay awake.
+    pub fn is_moving_data(&self) -> bool {
+        self.tasks.is_busy()
     }
 
     pub fn selected_drive(&self) -> Option<&consoles::Drive> {
