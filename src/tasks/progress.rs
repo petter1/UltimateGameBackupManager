@@ -35,16 +35,21 @@ impl Progress {
         Some(Duration::from_secs_f64(left / speed))
     }
 
-    /// One line for the user: "1.20 GiB of 4.37 GiB · 35.0 MiB/s · 2 min left".
-    pub fn summary(&self) -> String {
-        let mut parts = vec![match self.total_bytes {
+    /// How far it got: "1.20 GiB of 4.37 GiB", or only the bytes done when the total isn't known.
+    pub fn amount(&self) -> String {
+        match self.total_bytes {
             Some(total) => format!(
                 "{} of {}",
                 Size::from_bytes(self.done_bytes.min(total)),
                 Size::from_bytes(total)
             ),
             None => Size::from_bytes(self.done_bytes).to_string(),
-        }];
+        }
+    }
+
+    /// One line for the user: "1.20 GiB of 4.37 GiB · 35.0 MiB/s · 2 min left".
+    pub fn summary(&self) -> String {
+        let mut parts = vec![self.amount()];
 
         if let Some(speed) = self.speed.filter(|s| *s > 0.0) {
             parts.push(format!("{}/s", Size::from_bytes(speed as u64)));
@@ -135,6 +140,7 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(p.summary(), "1.00 MiB of 4.00 MiB · 1.00 MiB/s · 3 s left");
+        assert_eq!(p.amount(), "1.00 MiB of 4.00 MiB");
         assert_eq!(format_duration(Duration::from_secs(61)), "2 min");
         assert_eq!(format_duration(Duration::from_secs(3725)), "1 h 2 min");
     }
