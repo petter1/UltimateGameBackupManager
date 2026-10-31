@@ -30,8 +30,8 @@ each item is ticked off here (and gets its test log entry) when done.
    from WiiGames at once (the second waits), move a waiting one earlier; scrub a Wii game with an
    update partition, then cancel a second scrub (the game must still start in USB Loader GX);
    check the hash of a known good dump. Test log entry.
-4. **Every later M1a and M1a+ pull request**: try it on the Mac before merging (the stay-awake one with a
-   long import and the Mac left alone until it would sleep).
+4. **Every later M1a and M1a+ pull request**: try it on the Mac before merging (the stay-awake
+   one with a long import and the Mac left alone until it would sleep).
 
 ## How the app is meant to work
 
@@ -133,9 +133,9 @@ TWBM's notifications are toasts in the window that pile up (one per error, e.g. 
   shows the log lines of that level next to the notifications, searchable and exportable as a file
   for bug reports. The log is also written to a file in the data folder.
 
-First step (`claude/m1a-plus-group-notifications`, 2026-10-31): the same message again is counted
-in one toast ("245×") instead of shown again; the log file (`log.txt`, already there) gets every
-one. To try on the Mac, e.g. an import onto the read-only disk image.
+First step (#20, 2026-10-31): the same message again is counted in one toast ("245×") instead of
+shown again; the log file (`log.txt`, already there) gets every one. Works on the Mac
+(2026-10-31); test log entry still to write.
 
 
 ### M1 · Install on the 3DS over Wi-Fi (M)
