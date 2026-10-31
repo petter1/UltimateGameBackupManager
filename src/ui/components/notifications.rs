@@ -33,6 +33,7 @@ fn item((i, notification): (usize, &Notification)) -> Element<'_, Message> {
         row![
             icon,
             text(notification.label()),
+            (notification.count() > 1).then(|| text!("{}×", notification.count()).size(12)),
             button(icon_x().center())
                 .on_press(Message::CloseNotification(i))
                 .padding(0)
