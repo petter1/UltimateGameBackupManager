@@ -630,15 +630,24 @@ pub async fn scan_async(sources: Vec<PathBuf>, data_dir: &'static Path) -> Scan 
     // read only when a source is given up; the app may not have loaded it yet at the start
     let mut previous: Option<Vec<LibraryItem>> = None;
 
+    // every thread that is still running has ended without a result (it panicked)
+    let mut closed = false;
+
     while done.iter().any(Option::is_none) {
-        let next = async { receiver.recv().await.ok() }
+        let next = async { Some(receiver.recv().await) }
             .or(async {
                 Timer::after(Duration::from_secs(1)).await;
                 None
             })
             .await;
-        if let Some((index, items)) = next {
-            done[index] = Some(items);
+        match next {
+            Some(Ok((index, items))) => {
+                done[index] = Some(items);
+                // a source that was given up may still answer while others are scanned
+                unanswered.retain(|source| source != &sources[index]);
+            }
+            Some(Err(_)) => closed = true,
+            None => {}
         }
 
         let now = Instant::now();
@@ -650,7 +659,7 @@ pub async fn scan_async(sources: Vec<PathBuf>, data_dir: &'static Path) -> Scan 
             if seen != *last_seen {
                 *last_seen = seen;
                 *last_change = now;
-            } else if now.duration_since(*last_change) >= SOURCE_SILENCE {
+            } else if closed || now.duration_since(*last_change) >= SOURCE_SILENCE {
                 if previous.is_none() {
                     previous = Some(smol::unblock(move || read_cache(data_dir)).await);
                 }
@@ -680,6 +689,8 @@ fn previous_items_in(previous: &[LibraryItem], source: &Path) -> Vec<LibraryItem
                 .map(|path| LibraryItem {
                     path: path.clone(),
                     copies: Vec::new(),
+                    // a split-off copy never takes the lead from a fresh item on a disk that answers
+                    in_cloud: item.in_cloud || *path != item.path,
                     ..item.clone()
                 })
         })
@@ -852,6 +863,8 @@ mod tests {
                 .iter()
                 .all(|i| i.copies.is_empty() && i.name == "Metroid Fusion")
         );
+        // only copies here, so neither may take the lead from a fresh item
+        assert!(from_b.iter().all(|i| i.in_cloud));
         assert!(previous_items_in(&[item], Path::new("/Volumes/c")).is_empty());
     }
 
