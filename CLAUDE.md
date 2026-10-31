@@ -34,18 +34,19 @@ start from `main` and only see what is there, so the update goes to `main` in it
      of a game with several discs: merged (#15), confirmed on the Mac.
   3. Convert, export, scrub and checksums as tasks, `LongOperations` removed, reordering: merged
      (#10) before the test on the Mac; it is still due (item 3 in "Waiting for the Mac").
-  4. Stay awake: pull request **#7**, branch `claude/m1a-stay-awake`, open; was branched before
-     #5 and needs `main` merged in.
+  4. Stay awake: pull request **#7**, branch `claude/m1a-stay-awake`, open; `main` merged in
+     2026-10-31 (now held while `tasks.is_busy()`), waits for the Mac test (item 4 in "Waiting
+     for the Mac").
   5. Unfinished tasks after a restart: pull request **#13**, branch `claude/m1a-resume-tasks`,
-     open, waits for the Mac test. #11 and #13 each add a "Waiting for the Mac" item 5 and
+     open, `main` merged in 2026-10-31, waits for the Mac test. #11 and #13 each add a "Waiting for the Mac" item 5 and
      touch `jobs.rs`: the one merged second renumbers its item and adds `SavedJob::Install`.
 - **M1, install on the 3DS**: pull request **#11**, branch `claude/m1-3ds-install-and-consoles`,
   open: "Install" on a CIA as a task (`Job::Install`, `Resource::Console`), consoles found in
   the background every 15 seconds (failures only logged), installed titles remembered in
   `consoles.json`. Ported from the local branch `feature/task-manager`, which predates #4 and
   has its own task manager; nothing else there is needed (its M1d roadmap is #8, staying awake
-  is #7). Waits for the Mac test (item 5 in "Waiting for the Mac" on that branch) before merging.
-- **M0b**: only the Mac part is left (`.icns`, screenshot).
+  is #7). `main` merged in 2026-10-31. Waits for the Mac test (item 5 in "Waiting for the Mac" on that branch) before merging.
+- **M0b**: done (#18, tested on the Mac 2026-10-31).
 - Branches to delete on GitHub: `feature/task-manager` once #11 is merged. Sessions on the
   maintainer's Mac can delete remote branches (done for the earlier ones on 2026-10-31).
 
