@@ -9,19 +9,26 @@ use iced::{
 
 /// The bar at the bottom of every page while tasks run or wait; opens the task manager.
 pub fn task_bar(state: &AppState) -> Option<Element<'_, Message>> {
-    let running = state.tasks.running_count();
+    let paused = state.tasks.paused_count();
+    let running = state.tasks.running_count() - paused;
     let waiting = state.tasks.waiting_count();
-    if running == 0 && waiting == 0 {
+    if running == 0 && paused == 0 && waiting == 0 {
         return None;
     }
 
-    let mut label = match running {
-        1 => "1 task running".to_string(),
-        n => format!("{n} tasks running"),
-    };
-    if waiting > 0 {
-        label.push_str(&format!(" · {waiting} waiting"));
+    let mut parts = Vec::new();
+    match running {
+        0 => {}
+        1 => parts.push("1 task running".to_string()),
+        n => parts.push(format!("{n} tasks running")),
     }
+    if paused > 0 {
+        parts.push(format!("{paused} paused"));
+    }
+    if waiting > 0 {
+        parts.push(format!("{waiting} waiting"));
+    }
+    let label = parts.join(" · ");
 
     let fraction = state.tasks.overall_fraction();
     let percent = fraction.map(|f| format!("{:.0}%", f * 100.0));
