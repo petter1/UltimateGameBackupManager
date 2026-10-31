@@ -17,6 +17,8 @@ pub struct Notification {
     label: Box<str>,
     level: NotificationLevel,
     created: Option<OffsetDateTime>,
+    /// How often the same message came, this one included.
+    count: u32,
 }
 
 impl Notification {
@@ -25,6 +27,7 @@ impl Notification {
             label: label.to_string().into_boxed_str(),
             level: NotificationLevel::Info,
             created: OffsetDateTime::now_local().ok(),
+            count: 1,
         }
     }
 
@@ -33,6 +36,7 @@ impl Notification {
             label: label.to_string().into_boxed_str(),
             level: NotificationLevel::Warning,
             created: OffsetDateTime::now_local().ok(),
+            count: 1,
         }
     }
 
@@ -41,6 +45,7 @@ impl Notification {
             label: label.to_string().into_boxed_str(),
             level: NotificationLevel::Error,
             created: OffsetDateTime::now_local().ok(),
+            count: 1,
         }
     }
 
@@ -49,6 +54,7 @@ impl Notification {
             label: label.to_string().into_boxed_str(),
             level: NotificationLevel::Success,
             created: OffsetDateTime::now_local().ok(),
+            count: 1,
         }
     }
 
@@ -58,6 +64,40 @@ impl Notification {
 
     pub fn level(&self) -> NotificationLevel {
         self.level
+    }
+
+    /// When it came (the latest, if it came again), as "14:03:27".
+    pub fn time(&self) -> Option<String> {
+        self.created.map(|created| {
+            format!(
+                "{:02}:{:02}:{:02}",
+                created.hour(),
+                created.minute(),
+                created.second()
+            )
+        })
+    }
+
+    pub fn is_problem(&self) -> bool {
+        matches!(
+            self.level,
+            NotificationLevel::Warning | NotificationLevel::Error
+        )
+    }
+
+    pub fn count(&self) -> u32 {
+        self.count
+    }
+
+    /// Whether `other` says the same, so it is shown as this one again.
+    pub fn is_same(&self, other: &Self) -> bool {
+        self.level == other.level && self.label == other.label
+    }
+
+    /// Counts one more of the same message; it takes the time of the latest.
+    pub fn repeat(&mut self, other: Self) {
+        self.count = self.count.saturating_add(1);
+        self.created = other.created;
     }
 }
 

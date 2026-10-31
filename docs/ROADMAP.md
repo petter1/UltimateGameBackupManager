@@ -30,8 +30,11 @@ each item is ticked off here (and gets its test log entry) when done.
    from WiiGames at once (the second waits), move a waiting one earlier; scrub a Wii game with an
    update partition, then cancel a second scrub (the game must still start in USB Loader GX);
    check the hash of a known good dump. Test log entry.
-4. **Every later M1a pull request**: try it on the Mac before merging (the stay-awake one with a
-   long import and the Mac left alone until it would sleep).
+   Partly done 2026-10-31 (see the test log): waiting, moving earlier, cancelling and hashing
+   work, and a known good dump (Worms 3D) gives "Hash match"; still open: export, convert,
+   scrub, pause by hand.
+4. **Every later M1a and M1a+ pull request**: try it on the Mac before merging (the stay-awake
+   one with a long import and the Mac left alone until it would sleep).
 
 ## How the app is meant to work
 
@@ -135,6 +138,16 @@ TWBM's notifications are toasts in the window that pile up (one per error, e.g. 
 - **The log in the same place**: choose a level – errors, warnings, info, debug – and the center
   shows the log lines of that level next to the notifications, searchable and exportable as a file
   for bug reports. The log is also written to a file in the data folder.
+
+First step (#20, 2026-10-31): the same message again is counted in one toast ("245×") instead of
+shown again; the log file (`log.txt`, already there) gets every one. Works on the Mac
+(2026-10-31); test log entry still to write.
+
+Messages page (#24, 2026-10-31, on top of the first step): every message since the start (the
+last 1000; runs of the same one are one entry), newest first, a filter "Only warnings and
+errors", a search field, "Open log file". Works on the Mac (2026-10-31), the search not tried
+yet. Still open: the source (task, console, drive) with a link to it, grouping different errors
+of one task, log levels with debug lines, export.
 
 
 ### M1 · Install on the 3DS over Wi-Fi (M)
@@ -283,10 +296,16 @@ be fixed from a second copy, which the library knows about.
   is a new dump from the disc.
 - Maybe later: put a removed update partition back from another game of the same region whose
   partition is byte-identical.
-- First check that a Redump-exact dump matches at all: every WBFS on WiiGames tried on
-  2026-10-31 gave "mismatch" – probably the *shortened* case, as WBFS tools often drop the update
-  partition. The GameCube ISOs on gamestation named after Redump are the next
-  candidates (not hashed yet: the drive stopped answering during the try).
+- A Redump-exact dump does match: Worms 3D [GWME51] (GameCube ISO on WiiGames, the same as the
+  Redump-named one on gamestation) gives "Hash match" (2026-10-31). Every WBFS on WiiGames tried
+  gave "mismatch". Read with nod on 2026-10-31: 32 of the 48 Wii WBFS on WiiGames have no update
+  partition (*shortened*); the message now says so (#38). The other 16 have one and still don't
+  match, e.g. Disney Planes Fire & Rescue [SQQPVZ]: SHA-1 `f0bce155…` against Redump's
+  `28cacd91…` (Europe) – damaged, zeroed update partition or a nod reconstruction issue.
+- The H0–H3 check doesn't work on WBFS as it is: nod's `PartitionOptions::validate_hashes`
+  reports a bad H3 or H0 hash in the first megabytes of almost every WBFS on WiiGames (tried on
+  5 on 2026-10-31), most likely where WBFS left out unused block groups. It has to skip the
+  groups the image doesn't store, or it only works on full ISO/RVZ dumps.
 
 ### M3 · Injects by content (M–L)
 
