@@ -33,7 +33,6 @@ pub fn library(state: &AppState) -> Element<'_, Message> {
             my_button::<Message>()
                 .icon(Icon::HardDriveUpload)
                 .label("Copy all to drive")
-                .kind(MyButtonKind::Toolbar)
                 .on_press(Message::CopyShownToDrive),
             my_card("Copy the Wii and GameCube games shown here that aren't on the drive yet"),
             tooltip::Position::Bottom
