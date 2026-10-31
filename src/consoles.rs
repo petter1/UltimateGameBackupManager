@@ -14,11 +14,12 @@ use crate::{
 use anyhow::Result;
 use iced::widget::image;
 use serde::{Deserialize, Serialize};
-use smol::fs;
+use smol::{fs, future::FutureExt};
 use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
+    sync::Mutex,
     time::Duration,
 };
 use which_fs::FsKind;
@@ -113,8 +114,10 @@ pub struct ConsolesState {
 pub struct Drive {
     pub path: PathBuf,
     pub label: String,
-    /// None while it isn't plugged in
+    /// None while it isn't plugged in or doesn't answer
     pub space: Option<DriveSpace>,
+    /// False when reading it took longer than [`DRIVE_LOAD_TIMEOUT`] (a hung or sleeping disk)
+    pub answering: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -126,13 +129,14 @@ pub struct DriveSpace {
 }
 
 impl Drive {
-    fn load(path: PathBuf) -> Self {
-        let label = path
-            .file_name()
+    fn label(path: &Path) -> String {
+        path.file_name()
             .unwrap_or(path.as_os_str())
             .to_string_lossy()
-            .into_owned();
+            .into_owned()
+    }
 
+    fn load(path: PathBuf) -> Self {
         let space = path
             .is_dir()
             .then(|| fs4::statvfs(&path).ok())
@@ -145,7 +149,21 @@ impl Drive {
                 writable: tempfile::tempfile_in(&path).is_ok(),
             });
 
-        Self { path, label, space }
+        Self {
+            label: Self::label(&path),
+            path,
+            space,
+            answering: true,
+        }
+    }
+
+    fn not_answering(path: PathBuf) -> Self {
+        Self {
+            label: Self::label(&path),
+            path,
+            space: None,
+            answering: false,
+        }
     }
 
     pub fn read_only(&self) -> bool {
@@ -172,8 +190,70 @@ impl Drive {
     }
 }
 
+/// How long reading a drive may take before it counts as not answering.
+const DRIVE_LOAD_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// The drives whose reading thread hasn't finished yet, so a hung disk gets one stuck thread,
+/// not a new one on every refresh.
+static DRIVES_LOADING: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+
+/// Takes a drive off [`DRIVES_LOADING`] when its thread ends, also if it panics.
+struct LoadingDrive(PathBuf);
+
+impl LoadingDrive {
+    /// None while an earlier thread is still reading this drive
+    fn start(path: &Path) -> Option<Self> {
+        let mut loading = DRIVES_LOADING.lock().unwrap_or_else(|e| e.into_inner());
+        if loading.iter().any(|p| p == path) {
+            return None;
+        }
+        loading.push(path.to_path_buf());
+        Some(Self(path.to_path_buf()))
+    }
+}
+
+impl Drop for LoadingDrive {
+    fn drop(&mut self) {
+        let mut loading = DRIVES_LOADING.lock().unwrap_or_else(|e| e.into_inner());
+        loading.retain(|p| p != &self.0);
+    }
+}
+
+/// Reads every drive on its own thread, so one hung disk doesn't hold up the list: a drive that
+/// doesn't answer in [`DRIVE_LOAD_TIMEOUT`] is shown as such (its thread is left to finish), and
+/// it isn't read again until that thread has finished.
 pub async fn load_drives(paths: Vec<PathBuf>) -> Vec<Drive> {
-    smol::unblock(move || paths.into_iter().map(Drive::load).collect()).await
+    let (sender, receiver) = smol::channel::unbounded();
+    for (index, path) in paths.iter().cloned().enumerate() {
+        let Some(loading) = LoadingDrive::start(&path) else {
+            continue;
+        };
+        let sender = sender.clone();
+        std::thread::spawn(move || {
+            let drive = Drive::load(path);
+            drop(loading);
+            let _ = sender.send_blocking((index, drive));
+        });
+    }
+    drop(sender);
+
+    let mut drives: Vec<Option<Drive>> = vec![None; paths.len()];
+    let collect = async {
+        while let Ok((index, drive)) = receiver.recv().await {
+            drives[index] = Some(drive);
+        }
+    };
+    collect
+        .or(async {
+            smol::Timer::after(DRIVE_LOAD_TIMEOUT).await;
+        })
+        .await;
+
+    drives
+        .into_iter()
+        .zip(paths)
+        .map(|(drive, path)| drive.unwrap_or_else(|| Drive::not_answering(path)))
+        .collect()
 }
 
 impl ConsolesState {
@@ -348,6 +428,36 @@ mod tests {
             addr: SocketAddr::new(ip.parse().unwrap(), PORT),
             info: Info::parse(keys),
         }
+    }
+
+    #[test]
+    fn drives_keep_their_order_and_an_unplugged_one_still_answers() {
+        let here = tempfile::tempdir().unwrap();
+        let paths = vec![PathBuf::from("/no/such/drive"), here.path().to_path_buf()];
+
+        let drives = smol::block_on(load_drives(paths.clone()));
+
+        assert_eq!(
+            drives.iter().map(|d| d.path.clone()).collect::<Vec<_>>(),
+            paths
+        );
+        assert!(drives[0].space.is_none() && drives[0].answering);
+        assert!(drives[1].space.is_some() && drives[1].answering);
+    }
+
+    #[test]
+    fn a_drive_still_being_read_is_not_read_again() {
+        let here = tempfile::tempdir().unwrap();
+        let path = here.path().to_path_buf();
+
+        let earlier = LoadingDrive::start(&path).unwrap();
+        assert!(LoadingDrive::start(&path).is_none());
+        let drives = smol::block_on(load_drives(vec![path.clone()]));
+        assert!(!drives[0].answering);
+
+        drop(earlier);
+        let drives = smol::block_on(load_drives(vec![path]));
+        assert!(drives[0].answering);
     }
 
     #[test]

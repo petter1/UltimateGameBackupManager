@@ -14,7 +14,7 @@ use crate::{
     tasks::{TaskId, TaskManager},
     toolbox::{ToolContext, ToolboxItem},
     ui::{modals::Modal, pages::Page, theme},
-    util::{self, drive_state::DriveState, updates},
+    util::{self, drive_state::DriveState, keep_awake::KeepAwake, updates},
 };
 use anyhow::{Context, Result};
 use iced::{
@@ -56,6 +56,11 @@ pub struct AppState {
     pub new_version: Option<Version>,
     pub consoles: ConsolesState,
     pub library: LibraryState,
+    /// The Messages page shows only warnings and errors.
+    pub messages_problems_only: bool,
+    /// Text the Messages page filters by, case-insensitive.
+    pub messages_search: String,
+    pub keep_awake: KeepAwake,
     /// Whether the window has the focus; system notifications only come while it hasn't.
     pub window_focused: bool,
 }
@@ -80,6 +85,9 @@ impl AppState {
                     new_version: None,
                     consoles: ConsolesState::default(),
                     library: LibraryState::default(),
+                    messages_problems_only: false,
+                    messages_search: String::new(),
+                    keep_awake: KeepAwake::default(),
                     // the window reports Focused once it has the focus; one opened in the background never does
                     window_focused: false,
                 },
@@ -131,6 +139,11 @@ impl AppState {
                 .into_iter()
                 .map(|addr| Task::done(Message::LoadConsoleTitles(addr))),
         )
+    }
+
+    /// Whether data moves right now, so the computer should stay awake.
+    pub fn is_moving_data(&self) -> bool {
+        self.tasks.is_busy()
     }
 
     /// Tells the system too, when the window is in the background and the user wants it.

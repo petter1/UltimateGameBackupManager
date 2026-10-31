@@ -5,6 +5,7 @@ pub mod data_dir;
 pub mod drive_state;
 pub mod fs;
 pub mod http;
+pub mod keep_awake;
 pub mod misc;
 pub mod sha1_list;
 pub mod system_notification;
