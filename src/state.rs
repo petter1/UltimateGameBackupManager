@@ -58,6 +58,8 @@ pub struct AppState {
     pub library: LibraryState,
     /// The Messages page shows only warnings and errors.
     pub messages_problems_only: bool,
+    /// Text the Messages page filters by, case-insensitive.
+    pub messages_search: String,
 }
 
 impl AppState {
@@ -81,6 +83,7 @@ impl AppState {
                     consoles: ConsolesState::default(),
                     library: LibraryState::default(),
                     messages_problems_only: false,
+                    messages_search: String::new(),
                 },
                 Task::batch([
                     Task::perform(Config::load(data_dir), Message::GotConfig),

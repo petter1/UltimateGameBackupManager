@@ -13,7 +13,7 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Length, padding,
-    widget::{Column, checkbox, column, container, row, rule, scrollable, space, text},
+    widget::{Column, checkbox, column, container, row, rule, scrollable, space, text, text_input},
 };
 use itertools::Itertools;
 use lucide_icons::Icon;
@@ -49,6 +49,9 @@ fn titlebar(state: &AppState) -> Element<'_, Message> {
 
     row![
         "  Messages",
+        text_input("Search", &state.messages_search)
+            .on_input(Message::SearchMessages)
+            .width(200),
         space::horizontal(),
         checkbox(state.messages_problems_only)
             .label("Only warnings and errors")
@@ -62,6 +65,14 @@ fn titlebar(state: &AppState) -> Element<'_, Message> {
     .into()
 }
 
+fn matches_search(notification: &Notification, search: &str) -> bool {
+    search.is_empty()
+        || notification
+            .label()
+            .to_lowercase()
+            .contains(&search.trim().to_lowercase())
+}
+
 /// Every message since the start, the newest first; the log file has all of them.
 pub fn messages(state: &AppState) -> Element<'_, Message> {
     let shown = state
@@ -70,6 +81,7 @@ pub fn messages(state: &AppState) -> Element<'_, Message> {
         .iter()
         .rev()
         .filter(|n| !state.messages_problems_only || n.is_problem())
+        .filter(|n| matches_search(n, &state.messages_search))
         .collect::<Vec<_>>();
 
     let content: Element<'_, Message> = if shown.is_empty() {
@@ -92,4 +104,17 @@ pub fn messages(state: &AppState) -> Element<'_, Message> {
             .width(Length::Fill),
     ]
     .into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn search_ignores_case_and_surrounding_spaces() {
+        let n = Notification::error("Read-only file system");
+        assert!(matches_search(&n, ""));
+        assert!(matches_search(&n, " read-ONLY "));
+        assert!(!matches_search(&n, "disk full"));
+    }
 }

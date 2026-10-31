@@ -61,6 +61,7 @@ pub enum Message {
     ClearTaskHistory,
     ClearMessages,
     SetMessagesProblemsOnly(bool),
+    SearchMessages(String),
     ToggleAnimationState,
     ReloadCover(GameID),
     ReloadOscIcon(usize),

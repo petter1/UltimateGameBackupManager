@@ -320,6 +320,10 @@ impl AppState {
                 self.notifications.clear_history();
                 Task::none()
             }
+            Message::SearchMessages(search) => {
+                self.messages_search = search;
+                Task::none()
+            }
             Message::SetMessagesProblemsOnly(only) => {
                 self.messages_problems_only = only;
                 Task::none()
