@@ -53,8 +53,8 @@ console, a real drive or a real collection can show.
 | **When** | 2026-10-31, `claude/m2b-explain-mismatch` 538e35ab (debug build), macOS 27 |
 | **How** | "SHA1" in the game info of Glacier 3 (no update partition) and of Disney Planes: Fire & Rescue (has one, the info shows "Scrub"). Separately, `shasum` of "Worms 3D (USA) (En,Fr).iso" on gamestation (a GameCube ISO named after Redump) looked up in the app's `sha1_list.bin` |
 | **Why** | every WBFS on WiiGames gave "Hash mismatch" without a reason |
-| **Result** | ✅ Glacier 3: "…: the dump has no update partition (often removed when making a WBFS), so it can't match the disc. The game itself is not affected". Disney Planes: "…: not a known good dump. It may be damaged, another version or changed otherwise; the hash can't tell which". The GameCube ISO's SHA-1 (373505dc…) is in the list, so a Redump-exact dump does match. The message names the game twice ("Check the hash of Glacier 3: Hash mismatch for Glacier 3: …") |
-| **Follow-up** | the doubled title; a hash match through the app (the ISO is on gamestation, the button is for games on the drive) |
+| **Result** | ✅ Glacier 3: "…: the dump has no update partition (often removed when making a WBFS), so it can't match the disc. The game itself is not affected". Disney Planes: "…: not a known good dump. It may be damaged, another version or changed otherwise; the hash can't tell which". The GameCube ISO's SHA-1 (373505dc…) is in the list; the same file is on WiiGames as Worms 3D [GWME51], and "SHA1" there says "Hash match for Worms 3D! - SHA1 is well known, your dump is perfect". The message names the game twice ("Check the hash of Glacier 3: Hash mismatch for Glacier 3: …") |
+| **Follow-up** | the doubled title in the message |
 
 ### 2026-10-31 · WiiGames · a game already on the drive isn't imported again (#33)
 
@@ -183,8 +183,8 @@ console, a real drive or a real collection can show.
 | **When** | 2026-10-31, `main` 3935bd8e (debug build), macOS 27 |
 | **How** | Hash tasks on WiiGames: Xenoblade Chronicles (split WBFS, 7.93 GiB), GoldenEye 007, Glacier 3; one waiting task moved earlier; the running one cancelled; pause tried |
 | **Why** | #10 was merged before the test on real hardware |
-| **Result** | ⚠️ Second and third hash wait; "Earlier" moves Glacier 3 before GoldenEye; cancelling the running hash → "Cancelled", the next one starts; a split WBFS is read whole. Every hash: "Hash mismatch" (WBFS dumps; see #38). Pause: the background clicks fired twice (Pause then Resume, seen in a debug log), so pause by hand is still open; while paused the row kept speed and time left (fixed in #27). Not tried: export, convert to RVZ (file dialogs), scrub (needs the Wii), a hash match |
-| **Follow-up** | item 3 of "Waiting for the Mac": export, convert, scrub, pause by hand, a known good dump |
+| **Result** | ⚠️ Second and third hash wait; "Earlier" moves Glacier 3 before GoldenEye; cancelling the running hash → "Cancelled", the next one starts; a split WBFS is read whole. Every hash: "Hash mismatch" (WBFS dumps; see #38). Pause: the background clicks fired twice (Pause then Resume, seen in a debug log), so pause by hand is still open; while paused the row kept speed and time left (fixed in #27). Not tried: export, convert to RVZ (file dialogs), scrub (needs the Wii). A hash match was shown later the same day with Worms 3D (see the #38 entry) |
+| **Follow-up** | item 3 of "Waiting for the Mac": export, convert, scrub, pause by hand |
 
 ### 2026-10-31 · Mac · own icon and screenshot
 
