@@ -36,8 +36,8 @@ each item is ticked off here (and gets its test log entry) when done.
    update partition, then cancel a second scrub (the game must still start in USB Loader GX);
    check the hash of a known good dump. Test log entry.
    Partly done 2026-10-31 (see the test log): waiting, moving earlier, cancelling and hashing
-   work, and a known good dump (Worms 3D) gives "Hash match"; still open: export, convert,
-   scrub, pause by hand.
+   work, and a known good dump (Worms 3D) gives "Hash match". Pausing an import by hand and
+   resuming it works (2026-11-09, on a FAT32 disk image). Still open: export, convert, scrub.
 4. **Every later M1a and M1a+ pull request**: try it on the Mac before merging (the stay-awake
    one with a long import and the Mac left alone until it would sleep).
 
