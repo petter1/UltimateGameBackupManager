@@ -19,8 +19,8 @@ what already exists, so no work is done twice:
 - **Delete remote branches or force-push**: the cloud environment (claude.ai/code) refuses
   `git push --delete` and `git push --force-with-lease` as destructive. So: never push something
   that would need to be undone that way, and use a new commit instead of amending a pushed one.
-  A branch that has to go is deleted by the maintainer on GitHub, or by a Claude Desktop session
-  on the Mac, which can probably do it (not tried yet).
+  A branch that has to go is deleted by the maintainer on GitHub. A Claude Desktop session on the
+  Mac can't do it on its own either: its auto mode refused `git push --delete` (2026-11-10).
 
 ## Before a session ends
 
@@ -116,8 +116,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
 - A ROM source or drive that doesn't answer no longer holds up the library scan (#31) or the
   settings (#28). Trying a build on macOS: BUILDING.md (#29); every re-signed test build asks again
   for removable volumes access.
-- Branches to delete on GitHub (checked 2026-11-09 against the full history; cloud sessions
-  can't delete them):
+- Branches to delete on GitHub (checked 2026-11-09, and again on the Mac 2026-11-10: the five
+  `feature/` ones are ancestors of `main`, `pure-rust` and `test-lucide-icons-svg` have the same
+  commit as upstream; no session can delete them, the maintainer does):
   - already fully in `main`: `feature/3ds-link-client`, `feature/drive-devices`,
     `feature/link-protocol`, `feature/m0-loose-ends`, `feature/rebrand`;
   - copies of TinyWiiBackupManager's own branches, identical to upstream (where they stay):
