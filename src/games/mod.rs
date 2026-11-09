@@ -176,23 +176,54 @@ pub async fn keep_valid_games(
     entries
 }
 
-/// Reads the discs of a bulk copy like [`keep_valid_games`], but also returns the files that
-/// couldn't be read, so they can be named.
-pub async fn read_import_entries(
-    paths: Vec<PathBuf>,
-    existing_ids: &[GameID],
-) -> (Vec<ImportEntry>, Vec<(PathBuf, anyhow::Error)>) {
-    let mut entries = Vec::new();
-    let mut unreadable = Vec::new();
-    for path in paths {
-        match ImportEntry::new(path.clone()).await {
-            Ok(entry) => entries.push(entry),
-            Err(e) => unreadable.push((path, e)),
+/// What "Copy all to drive" found before it copies: the discs to import, the files it couldn't
+/// read, the space the discs need and the space the drive has.
+#[derive(Debug)]
+pub struct BulkCopy {
+    pub entries: Vec<ImportEntry>,
+    pub unreadable: Vec<(PathBuf, anyhow::Error)>,
+    /// The source files' sizes: a converted or scrubbed copy on the drive can differ.
+    pub needed: u64,
+    /// `None` when the drive's free space can't be read.
+    pub free: Option<u64>,
+}
+
+impl BulkCopy {
+    /// Reads the discs like [`keep_valid_games`], but names the files it couldn't read.
+    pub async fn read(paths: Vec<PathBuf>, existing_ids: &[GameID], mount_point: PathBuf) -> Self {
+        let mut entries = Vec::new();
+        let mut unreadable = Vec::new();
+        for path in paths {
+            match ImportEntry::new(path.clone()).await {
+                Ok(entry) => entries.push(entry),
+                Err(e) => unreadable.push((path, e)),
+            }
+        }
+        drop_existing(&mut entries, existing_ids);
+
+        let mut needed = 0;
+        for entry in &entries {
+            needed += smol::fs::metadata(entry.path())
+                .await
+                .map_or(0, |meta| meta.len());
+        }
+        let free = smol::unblock(move || fs4::statvfs(&mount_point))
+            .await
+            .ok()
+            .map(|stat| stat.available_space());
+
+        Self {
+            entries,
+            unreadable,
+            needed,
+            free,
         }
     }
 
-    drop_existing(&mut entries, existing_ids);
-    (entries, unreadable)
+    /// Whether the drive is known to be too small for all of it.
+    pub fn too_big(&self) -> bool {
+        self.free.is_some_and(|free| self.needed > free)
+    }
 }
 
 fn drop_existing(entries: &mut Vec<ImportEntry>, existing_ids: &[GameID]) {
@@ -293,14 +324,19 @@ mod tests {
             .meta
             .game_id();
 
-        let (entries, unreadable) = smol::block_on(read_import_entries(
+        let copy = smol::block_on(BulkCopy::read(
             vec![good.clone(), present, broken.clone()],
             &[existing],
+            dir.path().to_path_buf(),
         ));
 
-        assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].path(), good);
-        assert_eq!(unreadable.len(), 1);
-        assert_eq!(unreadable[0].0, broken);
+        assert_eq!(copy.entries.len(), 1);
+        assert_eq!(copy.entries[0].path(), good);
+        assert_eq!(copy.unreadable.len(), 1);
+        assert_eq!(copy.unreadable[0].0, broken);
+        // only the disc that is copied counts, and the folder's disk has room for it
+        assert_eq!(copy.needed, std::fs::metadata(&good).unwrap().len());
+        assert!(copy.free.is_some());
+        assert!(!copy.too_big());
     }
 }

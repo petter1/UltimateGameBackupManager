@@ -4,7 +4,7 @@
 use crate::{
     config::message::ConfigMessage,
     consoles,
-    games::{ImportEntry, games_state::GamesState, read_import_entries, txtcodes::download_cheats},
+    games::{BulkCopy, ImportEntry, games_state::GamesState, txtcodes::download_cheats},
     homebrew::homebrew_state::HomebrewState,
     jobs::Job,
     library,
@@ -723,46 +723,10 @@ impl AppState {
                 let mount_point = self.config.mount_point().to_path_buf();
 
                 Task::perform(
-                    async move {
-                        let (entries, unreadable) = read_import_entries(paths, &existing_ids).await;
-                        let mut needed = 0;
-                        for entry in &entries {
-                            needed += smol::fs::metadata(entry.path())
-                                .await
-                                .map_or(0, |meta| meta.len());
-                        }
-                        let free = smol::unblock(move || fs4::statvfs(&mount_point))
-                            .await
-                            .ok()
-                            .map(|stat| stat.available_space());
-                        (entries, unreadable, needed, free)
-                    },
-                    |pick| pick,
+                    async move { BulkCopy::read(paths, &existing_ids, mount_point).await },
+                    |copy| copy,
                 )
-                .then(|(entries, unreadable, needed, free)| {
-                    let mut tasks = unreadable
-                        .into_iter()
-                        .map(|(path, e)| {
-                            Task::done(Message::Notify(Notification::warning(format!(
-                                "{} can't be read, not copied: {e:#}",
-                                path.display()
-                            ))))
-                        })
-                        .collect::<Vec<_>>();
-                    // the files' sizes: a converted or scrubbed copy on the drive can differ
-                    match free {
-                        Some(free) if needed > free => {
-                            tasks.push(Task::done(Message::Notify(Notification::error(format!(
-                                "Copying {} needs about {}, the drive has {} free: nothing copied",
-                                games_count(entries.len()),
-                                Size::from_bytes(needed),
-                                Size::from_bytes(free)
-                            )))));
-                        }
-                        _ => tasks.push(Task::done(Message::PickedGames(entries))),
-                    }
-                    Task::batch(tasks)
-                })
+                .then(|copy| Task::batch(bulk_copy_messages(copy).into_iter().map(Task::done)))
             }
             Message::GotUpdate(new_version) => {
                 self.new_version = Some(new_version);
@@ -792,10 +756,88 @@ impl AppState {
     }
 }
 
+/// What "Copy all to drive" does once it has read the discs: a warning per unreadable file, then
+/// the imports, or nothing when the drive is too small for all of them.
+fn bulk_copy_messages(copy: BulkCopy) -> Vec<Message> {
+    let mut messages = copy
+        .unreadable
+        .iter()
+        .map(|(path, e)| {
+            Message::Notify(Notification::warning(format!(
+                "{} can't be read, not copied: {e:#}",
+                path.display()
+            )))
+        })
+        .collect::<Vec<_>>();
+
+    if copy.too_big() {
+        messages.push(Message::Notify(Notification::error(format!(
+            "Copying {} needs about {}, the drive has {} free: nothing copied",
+            games_count(copy.entries.len()),
+            Size::from_bytes(copy.needed),
+            Size::from_bytes(copy.free.unwrap_or_default())
+        ))));
+    } else {
+        messages.push(Message::PickedGames(copy.entries));
+    }
+    messages
+}
+
 fn games_count(n: usize) -> String {
     if n == 1 {
         "1 game".to_string()
     } else {
         format!("{n} games")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn copy(needed: u64, free: Option<u64>) -> BulkCopy {
+        BulkCopy {
+            entries: Vec::new(),
+            unreadable: vec![("/a/Broken.iso".into(), anyhow::anyhow!("invalid console"))],
+            needed,
+            free,
+        }
+    }
+
+    fn labels(messages: &[Message]) -> Vec<String> {
+        messages
+            .iter()
+            .filter_map(|m| match m {
+                Message::Notify(n) => Some(n.label().to_string()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_bulk_copy_that_fits_imports_and_names_unreadable_files() {
+        let messages = bulk_copy_messages(copy(100, Some(1000)));
+        assert_eq!(
+            labels(&messages),
+            ["/a/Broken.iso can't be read, not copied: invalid console"]
+        );
+        assert!(matches!(messages.last(), Some(Message::PickedGames(_))));
+    }
+
+    #[test]
+    fn a_bulk_copy_too_big_for_the_drive_copies_nothing() {
+        let messages = bulk_copy_messages(copy(5_000_000_000, Some(1_000_000)));
+        assert!(
+            !messages
+                .iter()
+                .any(|m| matches!(m, Message::PickedGames(_)))
+        );
+        assert!(labels(&messages)[1].ends_with("free: nothing copied"));
+    }
+
+    #[test]
+    fn a_bulk_copy_goes_ahead_when_free_space_is_unknown() {
+        let messages = bulk_copy_messages(copy(5_000_000_000, None));
+        assert!(matches!(messages.last(), Some(Message::PickedGames(_))));
     }
 }
