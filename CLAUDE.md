@@ -47,9 +47,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
   in UTC): #11's run of 17:42 passed on all three systems; #45's run of 17:52 passed on Linux
   and Windows, its macOS job still queued at 18:15; #36's run of 18:12 had no Linux and no macOS
   job at all (only Format and Windows, both green). Most likely the GitHub Actions minutes or
-  spending limit is used up (macOS minutes count tenfold on private repositories). The maintainer checks GitHub →
-  Settings → Billing → Actions. Until CI is green again, nothing is merged, not even
-  documentation; the checks run locally (all green for #11, #45 and #46). If it doesn't come
+  spending limit is used up (macOS minutes count tenfold on private repositories). The
+  maintainer checks GitHub → Settings → Billing → Actions. Until CI is green again, nothing is
+  merged, not even documentation; the checks run locally (all green for #11, #45 and #46). If it doesn't come
   back soon, the maintainer decides: macOS out of the matrix for a while, or only on `main`.
 - **Not merged yet: this "Current state" (#45)**. The next session merges #45 once CI is green,
   then merges `main` into every open branch (see "Before a session ends").
