@@ -12,7 +12,8 @@ use iced::{
 };
 use lucide_icons::Icon;
 
-pub fn task_row(task: &Task) -> Element<'_, Message> {
+/// `can_pause`: false for tasks that can't wait in the middle, e.g. an install on a console
+pub fn task_row(task: &Task, can_pause: bool) -> Element<'_, Message> {
     let id = task.id();
     let progress = task.progress();
 
@@ -63,7 +64,11 @@ pub fn task_row(task: &Task) -> Element<'_, Message> {
             row_button(Icon::X, "Cancel", Some(move || Message::CancelTask(id))),
         ],
         TaskState::Running => row![
-            row_button(Icon::Pause, "Pause", Some(move || Message::PauseTask(id))),
+            can_pause.then(|| row_button(
+                Icon::Pause,
+                "Pause",
+                Some(move || Message::PauseTask(id))
+            )),
             row_button(Icon::X, "Cancel", Some(move || Message::CancelTask(id))),
         ],
         TaskState::Paused => row![

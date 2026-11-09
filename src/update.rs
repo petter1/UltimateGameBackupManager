@@ -333,7 +333,9 @@ impl AppState {
                 Task::none()
             }
             Message::PauseTask(id) => {
-                self.tasks.pause(id);
+                if self.jobs.get(&id).is_none_or(Job::can_pause) {
+                    self.tasks.pause(id);
+                }
                 Task::none()
             }
             Message::ResumeTask(id) => {
@@ -592,8 +594,13 @@ impl AppState {
 
                 match result {
                     Ok(found) => {
+                        // the watch runs every 15 seconds: write the file only when it changes
+                        let before = self.consoles.saved_form();
                         self.consoles.merge(found, &self.busy_consoles());
                         let titles = self.load_missing_titles_task();
+                        if before == self.consoles.saved_form() {
+                            return titles;
+                        }
                         let data_dir = self.data_dir;
                         let entries = self.consoles.entries.clone();
                         Task::batch([

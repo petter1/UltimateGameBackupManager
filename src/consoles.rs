@@ -306,6 +306,14 @@ impl ConsolesState {
         }
     }
 
+    /// What `consoles.json` holds, to see whether it has to be written again
+    pub fn saved_form(&self) -> Vec<(SocketAddr, Info, Vec<Title>)> {
+        self.entries
+            .iter()
+            .map(|entry| (entry.addr, entry.info.clone(), entry.titles.clone()))
+            .collect()
+    }
+
     pub fn known_addresses(&self) -> Vec<IpAddr> {
         self.entries.iter().map(|entry| entry.addr.ip()).collect()
     }

@@ -43,8 +43,9 @@ each item is ticked off here (and gets its test log entry) when done.
 5. **M1, install on the 3DS** (branch `claude/m1-3ds-install-and-consoles`, before merging):
    with "petter1" running vcinject Link, open the Games page without visiting My Consoles; switch
    the 3DS on afterwards: it must show up within about 15 seconds. Install a CIA from the library
-   (progress on the computer and on the 3DS), pause and resume it, cancel a second one, and check
-   that the title list is read again afterwards. Quit, switch the 3DS off, start again: the
+   (progress on the computer and on the 3DS; installs offer no Pause, because vcinject Link would
+   wait without a timeout and the 3DS would look hung), cancel a second one halfway (it must not
+   show up on the 3DS afterwards), and check that the title list is read again afterwards. Quit, switch the 3DS off, start again: the
    library still marks its titles as on "petter1". Test log entry.
 
 ## How the app is meant to work

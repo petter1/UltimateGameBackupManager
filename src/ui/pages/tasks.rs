@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use crate::{
+    jobs::Job,
     message::Message,
     state::AppState,
     ui::components::{my_card::my_card, task_row::task_row, tasks_titlebar::tasks_titlebar},
@@ -23,7 +24,10 @@ pub fn tasks(state: &AppState) -> Element<'_, Message> {
         my_card(
             open.into_iter()
                 .chain(finished.into_iter().rev())
-                .map(task_row)
+                .map(|task| {
+                    let can_pause = state.jobs.get(&task.id()).is_none_or(Job::can_pause);
+                    task_row(task, can_pause)
+                })
                 .intersperse_with(|| rule::horizontal(1).into())
                 .collect::<Column<'_, _>>(),
         )

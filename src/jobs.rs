@@ -116,6 +116,13 @@ impl Job {
         }
     }
 
+    /// Whether the task may be paused. Not an install: vcinject Link waits for the next bytes
+    /// without a timeout and without running its main loop, so the 3DS would look hung and
+    /// couldn't be left with START or HOME for as long as the pause lasts.
+    pub fn can_pause(&self) -> bool {
+        !matches!(self, Self::Install { .. })
+    }
+
     /// The console whose titles change when the job is done.
     pub fn changes_titles_on(&self) -> Option<SocketAddr> {
         match self {
