@@ -30,6 +30,9 @@ used, and its history reads like a list of what changed and why, one line per ch
 - Merged branches are deleted.
 - Keeping a branch up to date with `main`: `git rebase origin/main` on your own branch (then
   `git push --force-with-lease`); never rebase or force-push a branch someone else works on.
+  Cloud sessions can't force-push, so they merge `origin/main` into the branch instead.
+- Before a Claude session ends, every open branch gets the new `main` (see
+  [CLAUDE.md](../CLAUDE.md#before-a-session-ends)), so its `CLAUDE.md` is current too.
 
 ## Commits
 

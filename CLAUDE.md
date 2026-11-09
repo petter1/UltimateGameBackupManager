@@ -22,6 +22,19 @@ what already exists, so no work is done twice:
   A branch that has to go is deleted by the maintainer on GitHub, or by a Claude Desktop session
   on the Mac, which can probably do it (not tried yet).
 
+## Before a session ends
+
+Before a session is archived (or the work is handed over), two things hold, so every session and
+every branch starts from the latest state:
+
+1. **`CLAUDE.md` on `main` is up to date**: "Current state" below describes what this session
+   changed, merged in its own small `docs/` pull request.
+2. **Every open branch has the new `main`** (and with it this file): `git fetch origin`, then for
+   each branch of an open pull request `git merge origin/main`, resolve conflicts, run the checks
+   (see "Where things are") and push. Cloud sessions merge instead of rebasing, because a rebase
+   needs a force-push, which they can't do (see above); with squash merging both give the same
+   commit on `main`. A session that can force-push (on the Mac) may rebase its own branches.
+
 ## Current state
 
 Handover between sessions; the session that changes the state updates this section. New sessions
