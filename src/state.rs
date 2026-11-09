@@ -295,12 +295,21 @@ impl AppState {
         })
     }
 
+    /// A console's name in My Consoles
+    pub fn console_label(&self, addr: SocketAddr) -> Option<String> {
+        self.consoles
+            .entries
+            .iter()
+            .find(|entry| entry.addr == addr)
+            .map(|entry| entry.label.clone())
+    }
+
     /// Consoles a running task is working with; vcinject Link may not answer a search meanwhile.
     pub fn busy_consoles(&self) -> Vec<SocketAddr> {
         self.tasks
             .iter()
             .filter(|task| task.state().is_active())
-            .filter_map(|task| self.jobs.get(&task.id())?.changes_titles_on())
+            .filter_map(|task| self.jobs.get(&task.id())?.console())
             .collect()
     }
 

@@ -3,11 +3,11 @@
 
 use crate::{
     config::{Config, message::ConfigMessage},
-    consoles::{ConsoleEntry, Drive, InstalledTitle},
+    consoles::{ConsoleEntry, Drive, InstalledTitle, TitleAction},
     games::{ImportEntry, game::Game, games_state::GamesState},
     homebrew::{homebrew_app::HomebrewApp, homebrew_state::HomebrewState},
     library::{LibraryItem, Platform},
-    link::discovery::Found,
+    link::{discovery::Found, protocol::Title},
     notifications::notification::Notification,
     osc::{osc_app::OscApp, osc_state::OscState},
     tasks::{TaskId, WorkerEvent},
@@ -104,6 +104,10 @@ pub enum Message {
     RemoveRomSource(PathBuf),
     CopyToDrive(PathBuf),
     InstallOnConsole(PathBuf, SocketAddr),
+    UpdateLink(SocketAddr),
+    /// Asks before deleting: the title and its name
+    AskDeleteTitle(SocketAddr, Title, String),
+    TitleAction(SocketAddr, TitleAction, Title, String),
     GotDrives(Vec<Drive>),
     OpenDrive(PathBuf, Page),
     ForgetDrive(PathBuf),

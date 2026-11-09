@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 💬 A Messages page lists every message since the start, also the closed ones, newest first,
   optionally only warnings and errors or those containing a search text, with a button that
   opens the log file.
+- 🎮 Install a CIA on a 3DS running vcinject Link straight from the library, as a task with
+  progress on the computer and on the 3DS; cancelling it halfway leaves nothing installed.
+  Consoles are found in the background on every page, and what is installed on them is
+  remembered while they are off.
+- 🎮 Start and delete games and apps in a 3DS's title list, and update an older vcinject Link
+  with the one the app ships.
 - 🔍 "Hash mismatch" says why when it can: a Wii dump without its update partition (often removed
   when making a WBFS) can't match the disc, though that alone doesn't stop the game from working.
 - ☕ The computer doesn't go to sleep from idleness while games are imported, converted,

@@ -45,8 +45,11 @@ each item is ticked off here (and gets its test log entry) when done.
    the 3DS on afterwards: it must show up within about 15 seconds. Install a CIA from the library
    (progress on the computer and on the 3DS; installs offer no Pause, because vcinject Link would
    wait without a timeout and the 3DS would look hung), cancel a second one halfway (it must not
-   show up on the 3DS afterwards), and check that the title list is read again afterwards. Quit, switch the 3DS off, start again: the
-   library still marks its titles as on "petter1". Test log entry.
+   show up on the 3DS afterwards), and check that the title list is read again afterwards. In
+   the title list, start a game (vcinject Link ends, the game starts) and delete one (asked
+   first; gone from the list afterwards). With an older vcinject Link (e.g. 12), "Update" on the
+   console's card installs version 13 and restarts it. Quit, switch the 3DS off, start again:
+   the library still marks its titles as on "petter1". Test log entry.
 
 ## How the app is meant to work
 
@@ -170,8 +173,17 @@ of one task, log levels with debug lines, export.
 - Consoles are found in the background on every page (a light discovery every 15 seconds), and
   what is installed on a console is remembered in `consoles.json`, so the library shows it also
   while the console is off. *Built, same branch.*
-- Delete and launch titles from the console's title list.
-- Offer the update of vcinject Link when it is older than the app expects.
+- Delete and launch titles from the console's title list. *Built, same branch*: "Start" and
+  "Delete" (asks first) on each title while the console is online, as tasks on the console's
+  connection, so they wait for a running install. Not offered for vcinject Link itself, and a
+  title on the game card can only be started.
+- Offer the update of vcinject Link when it is older than the app expects. *Built, same branch*:
+  "Update" on the console's card installs the vcinject Link the app ships
+  (`assets/vcinject-link.cia`, from vcinject) over the running one and restarts it, as vcinject
+  does.
+- A waiting install keeps the address the console had when it was added. When the console gets
+  another one meanwhile (a new DHCP lease), the task fails with "Could not connect"; installing
+  the CIA again from the library uses the new address. Rare, and accepted (2026-11-09).
 
 ### M1b · Prepare SD cards and drives (M)
 

@@ -726,6 +726,31 @@ impl AppState {
                     Err(e) => Message::Notify(e.into()),
                 })
             }
+            Message::UpdateLink(addr) => {
+                let Some(console) = self.console_label(addr) else {
+                    return Task::none();
+                };
+                self.add_job(Job::UpdateLink { addr, console });
+                self.start_ready_tasks()
+            }
+            Message::AskDeleteTitle(addr, title, name) => {
+                self.current_modal = Some(Modal::DeleteTitle(addr, title, name));
+                Task::none()
+            }
+            Message::TitleAction(addr, action, title, name) => {
+                self.current_modal = None;
+                let Some(console) = self.console_label(addr) else {
+                    return Task::none();
+                };
+                self.add_job(Job::Title {
+                    action,
+                    title,
+                    name,
+                    addr,
+                    console,
+                });
+                self.start_ready_tasks()
+            }
             Message::InstallOnConsole(cia, addr) => {
                 let Some(entry) = self
                     .consoles

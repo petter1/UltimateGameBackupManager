@@ -33,6 +33,13 @@ const METADATA_BATCH: usize = 20;
 /// The vcinject Link version this app expects; older ones get an update offer
 pub const VCINJECT_LINK_VERSION: u32 = 13;
 
+/// vcinject Link of that version, installed by "Update vcinject Link"; see its `.license` file
+static VCINJECT_LINK_CIA: &[u8] = include_bytes!("../assets/vcinject-link.cia");
+
+/// vcinject Link's own title (`UniqueId` 0xF7C1A in its `app.rsf`): it can't delete or start
+/// itself
+pub const VCINJECT_LINK_TITLE_ID: u64 = 0x0004_0000_0F7C_1A00;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsoleEntry {
     pub addr: SocketAddr,
@@ -510,7 +517,7 @@ fn installed_title(title: Title, smdh: Option<&[u8]>) -> InstalledTitle {
     }
 }
 
-/// Installs a CIA on a 3DS as a task: progress in bytes, pause and cancel through `control`.
+/// Installs a CIA on a 3DS as a task: progress in bytes and cancel through `control`.
 pub fn install_cia(
     cia: PathBuf,
     name: String,
@@ -519,30 +526,118 @@ pub fn install_cia(
 ) -> impl Stream<Item = WorkerEvent> {
     tasks::spawn_blocking(move |reporter| {
         let result = (|| -> Result<()> {
-            let mut link = Link::connect(addr)?;
-            let info = link.info()?;
-
             let file = std::fs::File::open(&cia)
                 .with_context(|| format!("Could not open {}", cia.display()))?;
             let size = file.metadata()?.len();
-            let reader = std::io::BufReader::new(file);
-
-            let message = format!("Installing {name}");
-            let on_progress = |sent| {
-                control.checkpoint().map_err(std::io::Error::other)?;
-                reporter.progress(sent, Some(size), || message.clone());
-                Ok(())
-            };
-            if info.supports(command::INSTALL_STREAM) {
-                link.install_stream(n3ds::LOCATION_SD, reader, size, on_progress)
-            } else {
-                link.install_legacy(n3ds::LOCATION_SD, reader, size, on_progress)
-            }
+            let mut link = Link::connect(addr)?;
+            install(
+                &mut link,
+                std::io::BufReader::new(file),
+                size,
+                &name,
+                &control,
+                reporter,
+            )
         })();
 
         result
             .map(|()| format!("Installed {name}"))
             .map_err(|e| e.to_string())
+    })
+}
+
+/// Installs the vcinject Link this app ships over the running one, then restarts it, as
+/// vcinject does: the running app keeps going until the restart.
+pub fn update_link(addr: SocketAddr, control: TaskControl) -> impl Stream<Item = WorkerEvent> {
+    tasks::spawn_blocking(move |reporter| {
+        let result = (|| -> Result<String> {
+            let mut link = Link::connect(addr)?;
+            let name = format!("vcinject Link {VCINJECT_LINK_VERSION}");
+            let _ = link.note(&format!("Updating to {name}"));
+            install(
+                &mut link,
+                VCINJECT_LINK_CIA,
+                VCINJECT_LINK_CIA.len() as u64,
+                &name,
+                &control,
+                reporter,
+            )?;
+
+            Ok(match link.restart_app() {
+                Ok(()) => format!("Updated to {name}; it is restarting"),
+                // very old versions can't restart themselves
+                Err(_) => format!(
+                    "Updated to {name}: press START on the 3DS and open vcinject Link again"
+                ),
+            })
+        })();
+
+        result.map_err(|e| e.to_string())
+    })
+}
+
+/// Sends a package over an open connection, with the stream command when the app knows it
+fn install(
+    link: &mut Link,
+    package: impl std::io::Read,
+    size: u64,
+    name: &str,
+    control: &TaskControl,
+    reporter: &mut tasks::Reporter,
+) -> Result<()> {
+    let info = link.info()?;
+    let message = format!("Installing {name}");
+    let on_progress = |sent| {
+        control.checkpoint().map_err(std::io::Error::other)?;
+        reporter.progress(sent, Some(size), || message.clone());
+        Ok(())
+    };
+    if info.supports(command::INSTALL_STREAM) {
+        link.install_stream(n3ds::LOCATION_SD, package, size, on_progress)
+    } else {
+        link.install_legacy(n3ds::LOCATION_SD, package, size, on_progress)
+    }
+}
+
+/// What can be done with an installed title
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TitleAction {
+    Delete,
+    Launch,
+}
+
+impl TitleAction {
+    /// Whether the action is offered for a title: not for vcinject Link itself, and a title on
+    /// the game card can be started but not deleted
+    pub fn offered(self, title: &Title) -> bool {
+        title.id != VCINJECT_LINK_TITLE_ID
+            && (self == Self::Launch || title.location == n3ds::LOCATION_SD)
+    }
+}
+
+/// Deletes or starts a title as a task; starting one ends vcinject Link on the 3DS
+pub fn title_action(
+    action: TitleAction,
+    title: Title,
+    name: String,
+    addr: SocketAddr,
+) -> impl Stream<Item = WorkerEvent> {
+    tasks::spawn_blocking(move |_| {
+        let result = (|| -> Result<String> {
+            let mut link = Link::connect(addr)?;
+            Ok(match action {
+                TitleAction::Delete => {
+                    link.delete(&title)?;
+                    format!("Deleted {name}")
+                }
+                TitleAction::Launch => {
+                    link.launch(&title)?;
+                    format!("Started {name}")
+                }
+            })
+        })();
+
+        result.map_err(|e| e.to_string())
     })
 }
 
@@ -644,6 +739,30 @@ mod tests {
         // a failed read keeps what was read before
         state.set_titles(new_addr, Err("timeout".into()));
         assert_eq!(state.having_title(title.id).count(), 1);
+    }
+
+    #[test]
+    fn the_shipped_vcinject_link_is_vcinject_link() {
+        let info = crate::n3ds::cia::read(std::io::Cursor::new(VCINJECT_LINK_CIA)).unwrap();
+        assert_eq!(info.title_id, VCINJECT_LINK_TITLE_ID);
+    }
+
+    #[test]
+    fn title_actions_spare_vcinject_link_and_the_game_card() {
+        let title = |id, location| Title {
+            id,
+            size: 1,
+            version: 0,
+            location,
+            product_code: String::new(),
+        };
+        let game = title(0x0004_0000_0012_3400, n3ds::LOCATION_SD);
+        let card = title(0x0004_0000_0012_3400, n3ds::LOCATION_GAME_CARD);
+        let link = title(VCINJECT_LINK_TITLE_ID, n3ds::LOCATION_SD);
+
+        assert!(TitleAction::Delete.offered(&game) && TitleAction::Launch.offered(&game));
+        assert!(!TitleAction::Delete.offered(&card) && TitleAction::Launch.offered(&card));
+        assert!(!TitleAction::Delete.offered(&link) && !TitleAction::Launch.offered(&link));
     }
 
     #[test]
