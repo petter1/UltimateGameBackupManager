@@ -39,8 +39,18 @@ every branch starts from the latest state:
 
 Handover between sessions; the session that changes the state updates this section. New sessions
 start from `main` and only see what is there, so the update goes to `main` in its own small
-`docs/` pull request (merged right away), not only in the feature branch. As of 2026-11-09:
+`docs/` pull request (merged right away), not only in the feature branch. As of 2026-11-09
+(evening):
 
+- **CI doesn't run (2026-11-09, since about 16:00)**: the macOS job got no runner and was
+  cancelled after 15–20 minutes on every pull request and on `main` (#44); since 17:43 no job
+  starts at all, Linux included. Most likely the GitHub Actions minutes or spending limit is used
+  up (macOS minutes count tenfold on private repositories). The maintainer checks GitHub →
+  Settings → Billing → Actions. Until CI is green again, nothing is merged, not even
+  documentation; the checks run locally (all green for #11, #45 and #46). If it doesn't come
+  back soon, the maintainer decides: macOS out of the matrix for a while, or only on `main`.
+- **Not merged yet: this "Current state" (#45)**. The next session merges #45 once CI is green,
+  then merges `main` into every open branch (see "Before a session ends").
 - **Merged 2026-10-31 after review** (all tried on the Mac before): #20 (the same message
   counted, "245×"), #24 (Messages page; its search not tried on the Mac), #7 (stay awake while
   `tasks.is_busy()`; the long sleep test is still due), #35 (a drive that doesn't answer stays in
@@ -57,11 +67,25 @@ start from `main` and only see what is there, so the update goes to `main` in it
   one merged second adds `SavedJob::Install` (`to_saved`, `leftovers`, `restore`) and renumbers
   its "Waiting for the Mac" item 5.
 - **M1, install on the 3DS**: pull request **#11** (`claude/m1-3ds-install-and-consoles`), open,
-  `main` merged in again 2026-11-09 (conflicts in `docs/ROADMAP.md` and `src/consoles.rs`),
-  not reviewed again yet: "Install" on a CIA as a task, consoles found every 15 seconds,
-  installed titles in `consoles.json`. To check on the 3DS: pausing an install holds the TCP
-  connection (Link may give up; then Install tasks shouldn't offer Pause); cancelling must not
-  leave a half-installed title.
+  all three M1 items built, reviewed by the session of 2026-11-09 evening, waiting for the Mac
+  (item 5 in "Waiting for the Mac"). Install a CIA as a task; cancel is checked before each chunk
+  (a cancel after the last one came too late, the 3DS finished the install), and vcinject Link
+  calls `AM_CancelCIAInstall` when the connection closes halfway; **no Pause for installs**
+  (vcinject Link waits without a timeout and without its main loop, the 3DS looked hung). Start
+  and delete titles from the title list (`Job::Title`, Delete asks first; not for vcinject Link
+  itself, game card titles only start). "Update" for an older vcinject Link installs the
+  vcinject Link 13 the app ships (`assets/vcinject-link.cia`, MIT, from vcinject commit 5a01743)
+  and restarts it, as vcinject does (`Job::UpdateLink`). Consoles found every 15 seconds,
+  titles remembered in `consoles.json` (written only when it changes). A waiting install keeps
+  the console's address; after a new DHCP lease it fails (accepted, documented). The jobs #13
+  has to save after #11: `SavedJob::Install`, and `UpdateLink`/`Title` are better dropped than
+  resumed after a restart.
+- **vcinject is the maintainer's too** (`petter1/vcinject`, MIT, made with Claude): fixes on the
+  3DS side go there, as vcinject Link 14, then the app ships the new CIA. Ideas from reading
+  `companion/source/main.c`: a receive timeout and the main loop during installs (Pause would
+  work again), the stream install command 19 (CIAs over 4 GiB), answering the `ugbm?` query and
+  `commands` in info. The CIA needs devkitPro, which cloud containers don't have: built on the
+  Mac or in vcinject's CI. Not started; to decide with the maintainer.
 - **M1a+, notifications**: system notifications, pull request **#22**
   (`claude/m1a-plus-system-notifications`), open, reviewed. The banner hasn't been seen on the Mac;
   likely reasons from the review: notify-rust sends on macOS when the handle is dropped and ignores
@@ -80,8 +104,14 @@ start from `main` and only see what is there, so the update goes to `main` in it
   banner), #11 (3DS); then the long sleep test for #7 and item 3 of "Waiting for the Mac". Each
   one that works is merged by Claude after a quick review, without asking (see "Merging" below).
 - **M2b, explain and repair bad dumps** (#26): first step merged (#38). nod's H0–H3 validation
-  fails on WBFS as it is (see the roadmap). Open: only the first disc of a multi-disc game is
-  hashed.
+  fails on WBFS as it is (see the roadmap). Both discs of a GameCube game on two discs are
+  hashed: pull request **#46** (`claude/m2b-hash-all-discs`), open, checks green locally; merge
+  once CI is green (a two-disc game on the Mac is in item 3 of "Waiting for the Mac", not needed
+  before merging).
+- **Roadmap order, proposed 2026-11-09, not decided**: M2 (databases) before M1b (prepare SD
+  cards and drives), because M2b, M3, M4, M5 and M5b build on M2, while M1b is large, formats
+  real disks, needs the Mac for almost everything, and its trigger (reformatting WiiGames) is
+  done; M1b together with M1d before M6a, which needs both. Ask the maintainer before moving it.
 - A ROM source or drive that doesn't answer no longer holds up the library scan (#31) or the
   settings (#28). Trying a build on macOS: BUILDING.md (#29); every re-signed test build asks again
   for removable volumes access.
