@@ -108,6 +108,10 @@ start from `main` and only see what is there, so the update goes to `main` in it
   knows (a new milestone, an unrelated topic), or when a fresh start is cheaper than carrying the
   context. Say so in one line, with what the new session should start with (branch, pull request,
   roadmap item).
+- **Say when something takes long, or run it in the background.** A command that may run for
+  more than a minute (the first `cargo build`/`clippy`/`test` in a fresh container takes several
+  minutes, a clone, a large download) runs in the background, or is announced in one line before
+  it starts ("Build and tests run now, about 5 minutes"). Without a word the session looks frozen.
 - The maintainer tests on a Mac with real consoles and drives; cloud sessions can't. What waits
   for the Mac is listed in [docs/ROADMAP.md](docs/ROADMAP.md) under "Waiting for the Mac"; add
   to it whenever a change needs a real-hardware test.
