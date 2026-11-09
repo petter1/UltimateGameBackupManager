@@ -30,8 +30,11 @@ each item is ticked off here (and gets its test log entry) when done.
    from WiiGames at once (the second waits), move a waiting one earlier; scrub a Wii game with an
    update partition, then cancel a second scrub (the game must still start in USB Loader GX);
    check the hash of a known good dump. Test log entry.
-4. **Every later M1a pull request**: try it on the Mac before merging (the stay-awake one with a
-   long import and the Mac left alone until it would sleep).
+   Partly done 2026-10-31 (see the test log): waiting, moving earlier, cancelling and hashing
+   work, and a known good dump (Worms 3D) gives "Hash match"; still open: export, convert,
+   scrub, pause by hand.
+4. **Every later M1a and M1a+ pull request**: try it on the Mac before merging (the stay-awake
+   one with a long import and the Mac left alone until it would sleep).
 5. **M1, install on the 3DS** (branch `claude/m1-3ds-install-and-consoles`, before merging):
    with "petter1" running vcinject Link, open the Games page without visiting My Consoles; switch
    the 3DS on afterwards: it must show up within about 15 seconds. Install a CIA from the library
@@ -96,7 +99,10 @@ Each milestone ends in something usable. They are in the planned order; sizes ar
 3. **Convert, export, scrub, checksums as tasks** (#10, cloud session 2026-10-30, merged):
    `LongOperations` is removed; waiting tasks can be moved earlier
    or later on the Tasks page. Still to try on the Mac (test log).
-4. **Stay awake** while a task is running (macOS, Windows, Linux).
+4. **Stay awake** while a task is running (macOS, Windows, Linux) (#7, cloud session
+   2026-10-30): `src/util/keep_awake.rs`, held while `tasks.is_busy()` (a paused task lets go).
+   Tried on the Mac 2026-10-31: `caffeinate` runs only while a task runs; the long sleep test
+   (item 4 in "Waiting for the Mac") is still due.
 5. **Unfinished tasks after a restart**: listed again, to resume or drop. Split off from 3,
    which was big enough; needs the jobs saved in the data folder.
 
@@ -138,6 +144,16 @@ TWBM's notifications are toasts in the window that pile up (one per error, e.g. 
 - **The log in the same place**: choose a level – errors, warnings, info, debug – and the center
   shows the log lines of that level next to the notifications, searchable and exportable as a file
   for bug reports. The log is also written to a file in the data folder.
+
+First step (#20, 2026-10-31): the same message again is counted in one toast ("245×") instead of
+shown again; the log file (`log.txt`, already there) gets every one. Works on the Mac
+(2026-10-31); test log entry still to write.
+
+Messages page (#24, 2026-10-31, on top of the first step): every message since the start (the
+last 1000; runs of the same one are one entry), newest first, a filter "Only warnings and
+errors", a search field, "Open log file". Works on the Mac (2026-10-31), the search not tried
+yet. Still open: the source (task, console, drive) with a link to it, grouping different errors
+of one task, log levels with debug lines, export.
 
 
 ### M1 · Install on the 3DS over Wi-Fi (M)
@@ -270,6 +286,36 @@ sees what is on it, keeps backups of it and sets up new cards. Builds on M1b (fo
   handles RAR5), falling back to `unar`/`lsar` when only that is installed. The unrar library's
   license doesn't fit GPL, so it isn't linked.
 - Real names for the ~700 entries that are only a title ID today.
+
+### M2b · Explain and repair bad dumps (M) – after M2
+
+Today the game info's "SHA1" button only says "Hash mismatch" (a dump's SHA-1 against the Redump
+list). A hash can't repair anything, but most mismatches aren't damage, and real damage can often
+be fixed from a second copy, which the library knows about.
+
+- **Say why it doesn't match**, instead of only "mismatch":
+  - *shortened*: the update partition was removed or the game was scrubbed. The game works; the
+    dump can't match Redump again without that data.
+  - *damaged*: each 32 KiB block of a Wii partition carries SHA-1s of its data (the H0–H3
+    tables); checking them names the bad blocks, as Dolphin's "Verify" does. GameCube discs have
+    no such tables, so for them only the whole hash is known.
+  - *other version*: a hack, another region or revision; with M2 the databases say which.
+- **Repair from another copy**: when the library has the same game twice (e.g. WiiGames and
+  gamestation), take the good blocks from each, and keep the result only if its hash is in the
+  Redump list. Never overwrite the original; write a new file. Without a second copy the only way
+  is a new dump from the disc.
+- Maybe later: put a removed update partition back from another game of the same region whose
+  partition is byte-identical.
+- A Redump-exact dump does match: Worms 3D [GWME51] (GameCube ISO on WiiGames, the same as the
+  Redump-named one on gamestation) gives "Hash match" (2026-10-31). Every WBFS on WiiGames tried
+  gave "mismatch". Read with nod on 2026-10-31: 32 of the 48 Wii WBFS on WiiGames have no update
+  partition (*shortened*); the message now says so (#38). The other 16 have one and still don't
+  match, e.g. Disney Planes Fire & Rescue [SQQPVZ]: SHA-1 `f0bce155…` against Redump's
+  `28cacd91…` (Europe) – damaged, zeroed update partition or a nod reconstruction issue.
+- The H0–H3 check doesn't work on WBFS as it is: nod's `PartitionOptions::validate_hashes`
+  reports a bad H3 or H0 hash in the first megabytes of almost every WBFS on WiiGames (tried on
+  5 on 2026-10-31), most likely where WBFS left out unused block groups. It has to skip the
+  groups the image doesn't store, or it only works on full ISO/RVZ dumps.
 
 ### M3 · Injects by content (M–L)
 

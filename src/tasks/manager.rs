@@ -267,6 +267,13 @@ impl TaskManager {
         self.tasks.iter().filter(|t| t.state.is_active()).count()
     }
 
+    pub fn paused_count(&self) -> usize {
+        self.tasks
+            .iter()
+            .filter(|t| t.state == TaskState::Paused)
+            .count()
+    }
+
     pub fn waiting_count(&self) -> usize {
         self.tasks
             .iter()
@@ -356,8 +363,10 @@ mod tests {
         assert_eq!(state(&m, a), TaskState::Paused);
         assert!(m.get(a).unwrap().control().is_paused());
         assert!(!m.is_busy());
+        assert_eq!(m.paused_count(), 1);
         m.resume(a);
         assert!(m.is_busy());
+        assert_eq!(m.paused_count(), 0);
 
         let control = m.get(a).unwrap().control();
         m.cancel(a);

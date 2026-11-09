@@ -10,6 +10,7 @@ pub mod games;
 pub mod homebrew_apps;
 pub mod library;
 pub mod loading;
+pub mod messages;
 pub mod no_drive;
 pub mod osc_apps;
 pub mod tasks;
@@ -28,5 +29,6 @@ pub enum Page {
     Settings,
     Toolbox,
     Tasks,
+    Messages,
     About,
 }

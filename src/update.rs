@@ -36,6 +36,16 @@ fn writes_to_drive(message: &Message) -> bool {
 
 impl AppState {
     pub fn update(&mut self, message: Message) -> Task<Message> {
+        let task = self.handle(message);
+
+        if let Some(e) = self.keep_awake.set(self.is_moving_data()) {
+            self.notifications.push(Notification::warning(e));
+        }
+
+        task
+    }
+
+    fn handle(&mut self, message: Message) -> Task<Message> {
         if writes_to_drive(&message)
             && let Some(drive) = self.selected_drive().filter(|drive| drive.read_only())
         {
@@ -228,8 +238,21 @@ impl AppState {
                     Task::none()
                 }
             }
-            Message::PickedGames(paths) => {
-                if paths.is_empty() {
+            Message::PickedGames(mut paths) => {
+                let picked = paths.len();
+                // also for a dropped file, which doesn't go through the dialog's check
+                paths.retain(|entry| {
+                    let on_drive = entry.is_on_drive(self.config.mount_point());
+                    if on_drive {
+                        self.notifications.push(Notification::info(format!(
+                            "{} is already on the drive",
+                            entry.display_title()
+                        )));
+                    }
+                    !on_drive
+                });
+
+                if picked == 0 {
                     self.notifications
                         .push(Notification::info("No new games selected"));
                     Task::none()
@@ -324,6 +347,18 @@ impl AppState {
             Message::RetryTask(id) => {
                 self.tasks.retry(id);
                 self.start_ready_tasks()
+            }
+            Message::ClearMessages => {
+                self.notifications.clear_history();
+                Task::none()
+            }
+            Message::SearchMessages(search) => {
+                self.messages_search = search;
+                Task::none()
+            }
+            Message::SetMessagesProblemsOnly(only) => {
+                self.messages_problems_only = only;
+                Task::none()
             }
             Message::ClearTaskHistory => {
                 self.clear_task_history();
@@ -608,7 +643,20 @@ impl AppState {
             Message::ScanLibrary => {
                 self.library.scanning = true;
                 let sources = self.config.rom_sources().to_vec();
-                Task::perform(library::scan_async(sources), Message::GotLibrary)
+                Task::perform(library::scan_async(sources, self.data_dir), |scan| scan).then(
+                    |scan| {
+                        let warnings = scan.unanswered.into_iter().map(|source| {
+                            Task::done(Message::Notify(Notification::warning(format!(
+                                "{} doesn't answer: its games are from the last scan",
+                                source.display()
+                            ))))
+                        });
+                        Task::batch(
+                            std::iter::once(Task::done(Message::GotLibrary(scan.items)))
+                                .chain(warnings),
+                        )
+                    },
+                )
             }
             Message::GotCachedLibrary(items) => {
                 // a finished scan is newer than the cache
