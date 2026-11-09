@@ -43,8 +43,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
 (evening):
 
 - **CI doesn't run (2026-11-09, since about 16:00)**: the macOS job got no runner and was
-  cancelled after 15–20 minutes on every pull request and on `main` (#44); since 17:43 no job
-  starts at all, Linux included. Most likely the GitHub Actions minutes or spending limit is used
+  cancelled after 15–20 minutes on every pull request and on `main` (#44). Not every time: #11's
+  run of 17:42 passed on all three systems; #45's run of 17:52 passed on Linux and Windows, and
+  its macOS job was still queued the next morning. Most likely the GitHub Actions minutes or spending limit is used
   up (macOS minutes count tenfold on private repositories). The maintainer checks GitHub →
   Settings → Billing → Actions. Until CI is green again, nothing is merged, not even
   documentation; the checks run locally (all green for #11, #45 and #46). If it doesn't come
@@ -108,10 +109,10 @@ start from `main` and only see what is there, so the update goes to `main` in it
   hashed: pull request **#46** (`claude/m2b-hash-all-discs`), open, checks green locally; merge
   once CI is green (a two-disc game on the Mac is in item 3 of "Waiting for the Mac", not needed
   before merging).
-- **Roadmap order, proposed 2026-11-09, not decided**: M2 (databases) before M1b (prepare SD
-  cards and drives), because M2b, M3, M4, M5 and M5b build on M2, while M1b is large, formats
-  real disks, needs the Mac for almost everything, and its trigger (reformatting WiiGames) is
-  done; M1b together with M1d before M6a, which needs both. Ask the maintainer before moving it.
+- **Roadmap order, decided 2026-11-10** (the maintainer left it to Claude): after M1 and M1c
+  comes **M2 (databases)**, then M2b, M3, M4, M5, M5b; M1b and M1d come after M5b, right before
+  M6a, which needs both. The next new milestone work is M2; it can be built and tested in the
+  cloud, while the Mac works through the queue below.
 - A ROM source or drive that doesn't answer no longer holds up the library scan (#31) or the
   settings (#28). Trying a build on macOS: BUILDING.md (#29); every re-signed test build asks again
   for removable volumes access.
