@@ -131,15 +131,12 @@ start from `main` and only see what is there, so the update goes to `main` in it
 - A ROM source or drive that doesn't answer no longer holds up the library scan (#31) or the
   settings (#28). Trying a build on macOS: BUILDING.md (#29); every re-signed test build asks again
   for removable volumes access.
-- Branches to delete on GitHub (checked 2026-11-09, and again on the Mac that evening: the five
-  `feature/` ones are ancestors of `main`, `pure-rust` and `test-lucide-icons-svg` have the same
-  commit as upstream; no session can delete them, the maintainer does):
-  - already fully in `main`: `feature/3ds-link-client`, `feature/drive-devices`,
-    `feature/link-protocol`, `feature/m0-loose-ends`, `feature/rebrand`;
-  - copies of TinyWiiBackupManager's own branches, identical to upstream (where they stay):
-    `pure-rust`, `test-lucide-icons-svg`;
-  - `feature/task-manager`: an early task manager (one commit) replaced by #4, #5 and #10; #11
-    was ported from it and no longer builds on it, so it can go now.
+- Old branches deleted on GitHub 2026-11-09 at the maintainer's request:
+  `feature/3ds-link-client`, `feature/drive-devices`, `feature/link-protocol`,
+  `feature/m0-loose-ends`, `feature/rebrand` (all in `main`), `feature/task-manager` (replaced by
+  #4, #5, #10 and #11), `pure-rust`, `test-lucide-icons-svg` (identical to upstream, where they
+  stay). Only branches of open pull requests are left. The local `feature/task-manager` on the
+  Mac has 4 more commits (early 3DS install and stay-awake work); delete it once #11 is merged.
   - A clone in a cloud session is shallow (50 commits): `git fetch --unshallow origin` before
     comparing old branches with `main`, or every one looks unrelated.
 
