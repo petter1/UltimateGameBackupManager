@@ -65,7 +65,7 @@ start from `main` and only see what is there, so the update goes to `main` in it
   to WiiGames is untested.
 - **Next on the Mac, in this order**: #36, #41, #13 (again, after the review's changes), #22 (the
   banner), #11 (3DS); then the long sleep test for #7 and item 3 of "Waiting for the Mac". Each
-  one that works may be merged by Claude when the maintainer says so.
+  one that works is merged by Claude after a quick review, without asking (see "Merging" below).
 - **M2b, explain and repair bad dumps** (#26): first step merged (#38). nod's H0–H3 validation
   fails on WBFS as it is (see the roadmap). Open: only the first disc of a multi-disc game is
   hashed.
@@ -84,6 +84,11 @@ start from `main` and only see what is there, so the update goes to `main` in it
     comparing old branches with `main`, or every one looks unrelated.
 
 ## Working with the maintainer
+
+- **Merging**: Claude merges its own pull requests without asking, as soon as CI is green, the
+  code is quickly reviewed and, where the roadmap says so, the test on the Mac worked.
+  Documentation-only: as soon as CI is green. UI code isn't reviewed: if the UI works, it is
+  good. Details: [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md#pull-requests).
 
 - **Recommend a new session proactively** as soon as it makes sense, without being asked: when
   the conversation has grown long, when the next piece of work doesn't need what this session
