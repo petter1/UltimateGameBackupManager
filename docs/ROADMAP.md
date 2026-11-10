@@ -51,6 +51,21 @@ each item is ticked off here (and gets its test log entry) when done.
    `games/` are gone. Resume the second: it imports completely. Also quit during a scrub and
    resume it (the game must still start in USB Loader GX), and start once with WiiGames
    unplugged: resuming fails with "is not connected" and the task stays listed. Test log entry.
+8. **M2, game databases** (#48 and #53 on top of it; numbered 8 because the branches of #11,
+   #13 and #49 bring items 6 and 7): merged only after Claude tried them on the Mac (the
+   maintainer's decision, 2026-11-10). A portable debug build of #53's branch (it has #48 too)
+   with the real ROM folder as the only ROM source; the scan only reads it.
+   - #48: the library shows release names instead of file names, "✓ good dump (No-Intro)" and
+     the checksums in the tooltip; a zip with one ROM next to the same ROM unpacked is one entry
+     with two copies; `library-checksums.json` is written, and after renaming a ROM the next
+     scan doesn't read it again (fast) and still knows it.
+   - #53: a start with the network writes `databases/no-intro/state.json` in the data folder
+     with six ETags and shows no message (libretro-database is still at the shipped version); a
+     start without the network shows nothing either; a hand-made `databases/no-intro/gba.tsv`
+     with a later version in its first line (e.g. `2099.01.01`) and one line with a real ROM's
+     checksums under a made-up name shows that name after a restart, and the real one again
+     once the file is deleted.
+   Test log entry; then Claude merges #48, retargets #53 to `main` and merges it.
 
 ## How the app is meant to work
 
