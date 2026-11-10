@@ -108,6 +108,7 @@ pub enum Message {
     /// Asks before deleting: the title and its name
     AskDeleteTitle(SocketAddr, Title, String),
     TitleAction(SocketAddr, TitleAction, Title, String),
+    CopyShownToDrive,
     GotDrives(Vec<Drive>),
     OpenDrive(PathBuf, Page),
     ForgetDrive(PathBuf),
