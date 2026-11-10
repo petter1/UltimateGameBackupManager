@@ -50,8 +50,8 @@ start from `main` and only see what is there, so the update goes to `main` in it
   #40.
 - **M2, game databases** (the next milestone; built and tested in the cloud): first pull request
   **#48** (`claude/nifty-hamilton-g6dclr`), open as a draft, CI green on all three systems.
-  **Not merged on purpose: the maintainer wants to look at it first**; merge it (mark it ready,
-  squash) once he says so. No Mac needed, but a scan of the real collection on the Mac shows
+  **Left unmerged on purpose for the maintainer to look at first** (a large new feature, not
+  tried on real files); merge it (mark it ready, squash) once the maintainer says so. No Mac needed, but a scan of the real collection on the Mac shows
   whether the release names appear (no real ROMs in cloud containers). The
   No-Intro lists of GB, GBC, GBA, NES, SNES and Mega Drive from libretro-database, compacted to
   `CRC32 \t SHA-1 \t serial \t name` in `assets/databases/no-intro/` (1.9 MB, CC BY-SA 4.0;
