@@ -50,6 +50,14 @@ each item is ticked off here (and gets its test log entry) when done.
    first; gone from the list afterwards). With an older vcinject Link (e.g. 12), "Update" on the
    console's card installs version 13 and restarts it. Quit, switch the 3DS off, start again:
    the library still marks its titles as on "petter1". Test log entry.
+6. **M1, first install of vcinject Link by QR code** (branch `claude/m1-link-qr-install`, on top
+   of item 5): on a 3DS without vcinject Link (or with it deleted from the title list first),
+   "Install vcinject Link" in My Consoles shows a QR code; in FBI, "Remote Install" → "Scan QR
+   Code" installs it, the window shows the download's progress and "has downloaded". vcinject
+   Link then starts and shows up in My Consoles. Also: the QR code button next to a CIA in the
+   library; closing the window halfway through a download (FBI must report the failed download,
+   nothing half-installed). If macOS asks whether the app may accept incoming connections, that
+   is needed. Test log entry.
 
 ## How the app is meant to work
 
@@ -181,6 +189,14 @@ of one task, log levels with debug lines, export.
   "Update" on the console's card installs the vcinject Link the app ships
   (`assets/vcinject-link.cia`, from vcinject) over the running one and restarts it, as vcinject
   does.
+- **First install of vcinject Link by QR code** (from vcinject's `serve.py`). *Built, waiting
+  for the Mac* (`claude/m1-link-qr-install`, on top of the branch above): "Install vcinject Link"
+  in My Consoles, and a QR code button next to every CIA in the library, serve the CIA over HTTP
+  in the local network (`src/link/serve.rs`, port 8080 or a free one, only while the window is
+  open) and show the QR code with the URL for FBI's "Remote Install → Scan QR Code", with the
+  download's progress. The same way installs any CIA on a console without vcinject Link. Not a
+  task: it waits for the console as long as the window is open.
+- Still open: installing on every online 3DS at once.
 - A waiting install keeps the address the console had when it was added. When the console gets
   another one meanwhile (a new DHCP lease), the task fails with "Could not connect"; installing
   the CIA again from the library uses the new address. Rare, and accepted (2026-11-09).

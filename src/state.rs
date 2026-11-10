@@ -64,6 +64,29 @@ pub struct AppState {
     /// Text the Messages page filters by, case-insensitive.
     pub messages_search: String,
     pub keep_awake: KeepAwake,
+    /// Serving a CIA for FBI's QR code install, while its window is open
+    pub qr_install: Option<QrInstall>,
+}
+
+/// A CIA served for FBI, with the QR code of its URL
+pub struct QrInstall {
+    pub name: String,
+    pub server: crate::link::serve::CiaServer,
+    /// none when the URL is too long for a QR code (it never is in practice)
+    pub qr: Option<iced::widget::image::Handle>,
+}
+
+impl QrInstall {
+    pub fn start(of: &consoles::QrInstallOf) -> std::io::Result<Self> {
+        let server = crate::link::serve::CiaServer::start(vec![of.served()])?;
+        let qr = crate::link::serve::qr_rgba(&server.qr_text(), 6)
+            .map(|(side, rgba)| iced::widget::image::Handle::from_rgba(side, side, rgba));
+        Ok(Self {
+            name: of.name(),
+            server,
+            qr,
+        })
+    }
 }
 
 impl AppState {
@@ -89,6 +112,7 @@ impl AppState {
                     messages_problems_only: false,
                     messages_search: String::new(),
                     keep_awake: KeepAwake::default(),
+                    qr_install: None,
                 },
                 Task::batch([
                     Task::perform(Config::load(data_dir), Message::GotConfig),

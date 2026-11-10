@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use crate::{
+    consoles::QrInstallOf,
     library::{ItemId, ItemKind, LibraryItem, Platform},
     link::protocol::Console,
     message::Message,
@@ -208,6 +209,16 @@ fn install_buttons<'a>(item: &'a LibraryItem, state: &'a AppState) -> Element<'a
                     .on_press(Message::InstallOnConsole(item.path.clone(), entry.addr)),
             )
         })
+        .chain(std::iter::once(
+            tooltip(
+                my_button::<Message>()
+                    .icon(Icon::QrCode)
+                    .on_press(Message::ShowQrInstall(QrInstallOf::Cia(item.path.clone()))),
+                my_card("Install with FBI on a 3DS without vcinject Link: QR code"),
+                tooltip::Position::Bottom,
+            )
+            .into(),
+        ))
         .collect::<Row<'_, _>>()
         .spacing(5)
         .into()

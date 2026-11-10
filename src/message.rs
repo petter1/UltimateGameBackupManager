@@ -105,6 +105,8 @@ pub enum Message {
     CopyToDrive(PathBuf),
     InstallOnConsole(PathBuf, SocketAddr),
     UpdateLink(SocketAddr),
+    /// Serves a CIA in the network and shows the QR code for FBI
+    ShowQrInstall(crate::consoles::QrInstallOf),
     /// Asks before deleting: the title and its name
     AskDeleteTitle(SocketAddr, Title, String),
     TitleAction(SocketAddr, TitleAction, Title, String),

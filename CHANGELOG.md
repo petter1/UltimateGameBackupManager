@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   remembered while they are off.
 - 🎮 Start and delete games and apps in a 3DS's title list, and update an older vcinject Link
   with the one the app ships.
+- 📷 A 3DS without vcinject Link gets it by QR code: "Install vcinject Link" in My Consoles
+  serves it in the local network and shows a QR code for FBI's "Remote Install → Scan QR Code".
+  The same works for any CIA in the library (the QR code button next to it).
 - 🔍 "Hash mismatch" says why when it can: a Wii dump without its update partition (often removed
   when making a WBFS) can't match the disc, though that alone doesn't stop the game from working.
 - ☕ The computer doesn't go to sleep from idleness while games are imported, converted,

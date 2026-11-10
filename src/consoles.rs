@@ -546,6 +546,38 @@ pub fn install_cia(
     })
 }
 
+/// What a QR code for FBI installs
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum QrInstallOf {
+    /// the vcinject Link this app ships, for a 3DS that doesn't run it yet
+    Link,
+    /// a CIA from the library
+    Cia(PathBuf),
+}
+
+impl QrInstallOf {
+    /// The name shown and served
+    pub fn name(&self) -> String {
+        match self {
+            Self::Link => format!("vcinject Link {VCINJECT_LINK_VERSION}"),
+            Self::Cia(path) => path
+                .file_stem()
+                .map_or_else(|| "CIA".to_string(), |s| s.to_string_lossy().into_owned()),
+        }
+    }
+
+    pub fn served(&self) -> crate::link::serve::Served {
+        use crate::link::serve::{Served, Source};
+        Served {
+            name: self.name(),
+            source: match self {
+                Self::Link => Source::Bytes(VCINJECT_LINK_CIA),
+                Self::Cia(path) => Source::File(path.clone()),
+            },
+        }
+    }
+}
+
 /// Installs the vcinject Link this app ships over the running one, then restarts it, as
 /// vcinject does: the running app keeps going until the restart.
 pub fn update_link(addr: SocketAddr, control: TaskControl) -> impl Stream<Item = WorkerEvent> {
