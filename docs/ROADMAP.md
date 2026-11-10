@@ -1,6 +1,6 @@
 # Roadmap
 
-The master plan for Ultimate Game Backup Manager, as of 2026-11-09. It replaces the phase list
+The master plan for Ultimate Game Backup Manager, as of 2026-11-10. It replaces the phase list
 in the README where the two differ.
 
 ## Where we are
@@ -36,8 +36,8 @@ each item is ticked off here (and gets its test log entry) when done.
    update partition, then cancel a second scrub (the game must still start in USB Loader GX);
    check the hash of a known good dump. Test log entry.
    Partly done 2026-10-31 (see the test log): waiting, moving earlier, cancelling and hashing
-   work, and a known good dump (Worms 3D) gives "Hash match"; still open: export, convert,
-   scrub, pause by hand.
+   work, and a known good dump (Worms 3D) gives "Hash match". Pausing an import by hand and
+   resuming it works (2026-11-09, on a FAT32 disk image). Still open: export, convert, scrub.
 4. **Every later M1a and M1a+ pull request**: try it on the Mac before merging (the stay-awake
    one with a long import and the Mac left alone until it would sleep).
 
@@ -60,6 +60,11 @@ each item is ticked off here (and gets its test log entry) when done.
 
 Each milestone ends in something usable. They are in the planned order; sizes are rough
 (S = a few hours, M = about one working session like 2026-10-28, L = several).
+
+M1b and M1d keep their names but come after M5b (decided 2026-11-09): M2b, M3, M4, M5 and M5b
+all build on M2's databases and can be built and tested mostly without the Mac, while M1b formats
+real disks and needs the Mac for almost every step; its trigger (reformatting WiiGames) is done
+by hand already. Only M6a needs M1b and M1d, so they come right before it.
 
 ### M0 · Loose ends (S) – done
 
@@ -157,12 +162,169 @@ of one task, log levels with debug lines, export.
 
 ### M1 · Install on the 3DS over Wi-Fi (M)
 
+Not built yet, and vcinject has it (compared 2026-11-10, see "From vcinject" below): **the first
+install of vcinject Link** on a 3DS that doesn't run it yet – the app serves the CIA over HTTP and
+shows a QR code that FBI scans (vcinject's `serve.py`). Without it a new 3DS still needs vcinject
+once. The same way installs any CIA on a console without vcinject Link. And **installing on every
+online 3DS at once**, not one console per click.
+
 - "Install" on a CIA in the library: choose the 3DS; it runs as a task (M1a), with progress on the
   computer and on the 3DS.
 - Delete and launch titles from the console's title list.
 - Offer the update of vcinject Link when it is older than the app expects.
 
-### M1b · Prepare SD cards and drives (M)
+### M1c · Copy many games to a drive (S)
+
+- "Copy to drive" in the library for a selection, a platform or a whole source folder, not one game
+  at a time; files over 4 GiB are always split for FAT32 (`.wbfs` + `.wbf1` …), as the drive import
+  already does. Found when copying the WBFS backup to the freshly formatted WiiGames drive, where
+  the Finder refuses files over 4 GiB.
+
+### M2 · Game databases (M)
+
+- Import and keep up to date: libretro-database (No-Intro, Redump), GameTDB (Wii, GameCube,
+  Wii U, 3DS), 3dsdb and WiiUBrew title lists – only the platforms we support, compacted.
+- **The app ships the databases and updates them.** It keeps working when a source is down.
+  - Every build pulls the current databases.
+  - A snapshot lives in the repository, so that a `git clone` brings current databases along and
+    a build works offline; the build uses it when it can't download, and refreshes it when it can.
+  - At run time the app checks for newer databases and falls back to the shipped ones.
+- Identify every library entry: by checksum (for RAR releases from the RAR headers), by title or
+  game ID, by name as a last resort.
+- RAR is read and unpacked with an external **7-Zip** (`7z`, `7zz` on macOS; on every platform,
+  handles RAR5), falling back to `unar`/`lsar` when only that is installed. The unrar library's
+  license doesn't fit GPL, so it isn't linked.
+- Real names for the ~700 entries that are only a title ID today.
+- From vcinject (compared 2026-11-10), for the ROMs of the older consoles (Game Boy to Mega Drive):
+  - The library remembers each file's checksum (CRC32, SHA-1) and cartridge serial, so a renamed or
+    moved file is recognised without being read again (today: name and size), and the game info
+    shows them with a link to the release's entry in the libretro database.
+  - Zipped ROMs (one game per .zip) are read like unpacked ones.
+  - **Artwork**: box art, title screens and logos from the libretro thumbnails, matched by
+    checksum; ROM hacks and games missing there from RetroGamesNexus, Pokémon hacks by the name in
+    their own text (vcinject's `romtext.py`); GameTDB for 3DS and Wii U retail titles. Covers are
+    kept for good and refreshed by ETag; a first download of all covers shows progress and can
+    carry on at the next start.
+  - **Descriptions** in the user's language from RetroGamesNexus or Wikipedia (`about.py`), also
+    for games that are missing.
+
+### M2b · Explain and repair bad dumps (M) – after M2
+
+Today the game info's "SHA1" button only says "Hash mismatch" (a dump's SHA-1 against the Redump
+list). A hash can't repair anything, but most mismatches aren't damage, and real damage can often
+be fixed from a second copy, which the library knows about.
+
+- **Say why it doesn't match**, instead of only "mismatch":
+  - *shortened*: the update partition was removed or the game was scrubbed. The game works; the
+    dump can't match Redump again without that data.
+  - *damaged*: each 32 KiB block of a Wii partition carries SHA-1s of its data (the H0–H3
+    tables); checking them names the bad blocks, as Dolphin's "Verify" does. GameCube discs have
+    no such tables, so for them only the whole hash is known.
+  - *other version*: a hack, another region or revision; with M2 the databases say which.
+- **Repair from another copy**: when the library has the same game twice (e.g. WiiGames and
+  gamestation), take the good blocks from each, and keep the result only if its hash is in the
+  Redump list. Never overwrite the original; write a new file. Without a second copy the only way
+  is a new dump from the disc.
+- Maybe later: put a removed update partition back from another game of the same region whose
+  partition is byte-identical.
+- A Redump-exact dump does match: Worms 3D [GWME51] (GameCube ISO on WiiGames, the same as the
+  Redump-named one on gamestation) gives "Hash match" (2026-10-31). Every WBFS on WiiGames tried
+  gave "mismatch". Read with nod on 2026-10-31: 32 of the 48 Wii WBFS on WiiGames have no update
+  partition (*shortened*); the message now says so (#38). The other 16 have one and still don't
+  match, e.g. Disney Planes Fire & Rescue [SQQPVZ]: SHA-1 `f0bce155…` against Redump's
+  `28cacd91…` (Europe) – damaged, zeroed update partition or a nod reconstruction issue.
+- The H0–H3 check doesn't work on WBFS as it is: nod's `PartitionOptions::validate_hashes`
+  reports a bad H3 or H0 hash in the first megabytes of almost every WBFS on WiiGames (tried on
+  5 on 2026-10-31), most likely where WBFS left out unused block groups. It has to skip the
+  groups the image doesn't store, or it only works on full ISO/RVZ dumps.
+- **ROMs of the handhelds** (from vcinject's `dumpdb.py`, compared 2026-11-10): besides the
+  No-Intro checksums, Game Boy, Color and Advance ROMs are checked against the database of
+  [FlashGBX](https://github.com/lesserkuma/FlashGBX) (the cartridge by its header, then CRC32 and
+  size). A ROM is *verified*, *differs from the known dump* or *unverified* (in no list: hacks,
+  translations, homebrew).
+
+### M3 · Injects by content (M–L)
+
+- Find the ROM or disc inside an inject and identify it by its checksum:
+  - 3DS GBA VC: ExeFS `.code` = ROM + footer with the ROM size.
+  - 3DS forwarders (SNES, NES, GB …): the ROM in the RomFS.
+  - Wii U, unpacked: `.z64` (N64), `rom.zip` (DS), ISO (GameCube), `.nfs` (Wii).
+  - Wii U as WUP (encrypted): needs the Wii U common key, entered once by the user; never shipped.
+  - Wii U GBA (`alldata.psb.m`) and NES/SNES (inside the `.rpx`): later.
+- Extract the ROM out of an inject again.
+- RAR releases are unpacked for this in the background, once, and the result is cached.
+
+### M4 · One entry per game (M)
+
+- The library groups files and injects under their game.
+- Game view: files, injects, where it is installed, "installable on" (GBA → 3DS, Wii U; GameCube
+  → Wii with Nintendont, Wii U; Wii → Wii, Wii U; N64, DS, SNES … → Wii U).
+- Filter by target console.
+- Language versions and copies of a game are one entry too ("3 versions"), with a menu to pick
+  the one to use and the regions as small labels on the cover (DE, US/EU, JP, "DE×2"), as vcinject
+  does. Copies of the same release are flagged, bit-identical or not.
+
+### M5 · Missing games and collections (M)
+
+- Per platform: have / missing, from the databases.
+  As in vcinject: a region filter, "owned X of Y",
+  the covers of missing games greyed out, *Owned first* and *Only series I own*.
+- Collections: their own file in the data folder with references to game IDs; create, edit, add
+  games; progress per collection ("Zelda: 14 of 19").
+- Series are suggested from the database names, as vcinject's `library.series` does ("Pokemon -
+  Emerald Version" and "Pokemon Mystery Dungeon" → "Pokemon", with exceptions like "Mario Andretti
+  Racing"); "missing" leaves out betas, hacks, BIOS and the like, as vcinject's catalog does.
+  Port both.
+- Name matching alone isn't good enough for series ("The Legend of Zelda", "Zelda II" and "Link's
+  Awakening" are one series; "Metroid" and "Super Metroid" too). So: keep the name heuristic, and
+  add a hand-made list of important series (Mario, Zelda, Pokémon, Metroid, Kirby, Donkey Kong …)
+  with their games' IDs, which wins over the heuristic.
+- Research before building: better sources for series (e.g. Wikidata's "part of the series",
+  IGDB's franchises, MobyGames groups – licenses and offline use to check).
+
+### M5b · File management (M–L)
+
+Builds on identified games (M2) and one entry per game (M4). Everything that moves, renames or
+deletes files runs as a task (M1a) and shows a preview first.
+
+**Folder structure, configurable**
+- Per ROM source a **layout** as a template with placeholders, e.g.
+  `{platform}/{title} [{region}]/{title}.{ext}` or `{platform}/{series}/{title} ({id})`, with
+  presets for common layouts (No-Intro names, one folder per game, USB loader layout `wbfs/`).
+  Separate layouts for ROMs, injects, saves and archives (RAR, ZIP) where wanted.
+- **Organize** a source into its layout: the app shows a dry run – what moves where,
+  which names change, conflicts (two files for one target, names too long for FAT32) – and only
+  runs after confirmation. Every run is logged and can be undone from that log.
+- **Clean up**: find duplicates (same checksum), empty folders, leftovers (`.part`, unpacked RAR
+  caches, macOS `._` files), unidentified files; each as a list to review, nothing is deleted
+  silently. Deleted files go to the system's trash where there is one.
+- **From vcinject** (compared 2026-11-10): *Zip* packs every unpacked ROM into its own .zip next
+  to it (the original is deleted only after its zip was verified); *Names* renames identified ROMs
+  to their release name; a ROM can be marked as *self-dumped*.
+- The layout of devices (drives, SD cards) stays what the console expects (M1b); the layout here
+  is for the collection on the computer.
+
+**Backup rules**
+- Rules per platform, source, collection or single game: *what* (ROM, saves, injects), *where*
+  (another ROM source, an external drive, a network share), *how often* (on change, daily,
+  weekly, by hand) and *how many* versions to keep (e.g. the last 10 saves, every save of the last
+  30 days).
+- Saves are versioned (timestamp, console they came from, checksum); ROMs and discs are only
+  copied once and checked by checksum afterwards.
+- A status per game and per rule: backed up, outdated, never; a report of what isn't backed up
+  anywhere (e.g. "37 games exist only on gamestation").
+- Restoring picks a version and a target (a source folder, a drive, a console over Link).
+
+**ROMs and saves in the game view**
+- The game view (M4) gets the tabs **Files** (ROMs, discs, injects with source, size, checksum,
+  identification), **Saves** (all versions per console, with date and size; back up, restore,
+  export, delete, compare) and **Backups** (which rules cover the game, last run, where the copies
+  are).
+- From there: set the game's own rule, move a file to another source, mark one copy as the main one.
+- Saves come from the consoles (3DS M6, Wii M7, Wii U M8) and from save folders on drives
+  and SD cards; until then the tab shows the save files found in the sources.
+
+### M1b · Prepare SD cards and drives (M) – after M5b, before M6a
 
 A wizard in My Consoles ("Prepare an SD card or drive") that makes a card or disk ready for a
 console: check it, format it if needed – with the tools the operating system brings – and lay out
@@ -214,14 +376,7 @@ what the console expects.
 - Tested first with disk images (`hdiutil` on macOS, loop devices on Linux, VHDs on Windows) in CI,
   never with a real disk.
 
-### M1c · Copy many games to a drive (S)
-
-- "Copy to drive" in the library for a selection, a platform or a whole source folder, not one game
-  at a time; files over 4 GiB are always split for FAT32 (`.wbfs` + `.wbf1` …), as the drive import
-  already does. Found when copying the WBFS backup to the freshly formatted WiiGames drive, where
-  the Finder refuses files over 4 GiB.
-
-### M1d · SD cards: manage, back up, set up (M)
+### M1d · SD cards: manage, back up, set up (M) – after M1b
 
 The SD card of a 3DS, a Wii or a Wii U becomes a device in My Consoles, like a drive: the app
 sees what is on it, keeps backups of it and sets up new cards. Builds on M1b (format and layout).
@@ -265,125 +420,6 @@ sees what is on it, keeps backups of it and sets up new cards. Builds on M1b (fo
   Nintendont from discs), RVL-201 Wii mini (**no SD slot**: USB only, so its "card" is a USB
   stick).
 - Wii U: one SD slot for Wii U and vWii homebrew; game drives are WFS (see M1b).
-
-### M2 · Game databases (M)
-
-- Import and keep up to date: libretro-database (No-Intro, Redump), GameTDB (Wii, GameCube,
-  Wii U, 3DS), 3dsdb and WiiUBrew title lists – only the platforms we support, compacted.
-- **The app ships the databases and updates them.** It keeps working when a source is down.
-  - Every build pulls the current databases.
-  - A snapshot lives in the repository, so that a `git clone` brings current databases along and
-    a build works offline; the build uses it when it can't download, and refreshes it when it can.
-  - At run time the app checks for newer databases and falls back to the shipped ones.
-- Identify every library entry: by checksum (for RAR releases from the RAR headers), by title or
-  game ID, by name as a last resort.
-- RAR is read and unpacked with an external **7-Zip** (`7z`, `7zz` on macOS; on every platform,
-  handles RAR5), falling back to `unar`/`lsar` when only that is installed. The unrar library's
-  license doesn't fit GPL, so it isn't linked.
-- Real names for the ~700 entries that are only a title ID today.
-
-### M2b · Explain and repair bad dumps (M) – after M2
-
-Today the game info's "SHA1" button only says "Hash mismatch" (a dump's SHA-1 against the Redump
-list). A hash can't repair anything, but most mismatches aren't damage, and real damage can often
-be fixed from a second copy, which the library knows about.
-
-- **Say why it doesn't match**, instead of only "mismatch":
-  - *shortened*: the update partition was removed or the game was scrubbed. The game works; the
-    dump can't match Redump again without that data.
-  - *damaged*: each 32 KiB block of a Wii partition carries SHA-1s of its data (the H0–H3
-    tables); checking them names the bad blocks, as Dolphin's "Verify" does. GameCube discs have
-    no such tables, so for them only the whole hash is known.
-  - *other version*: a hack, another region or revision; with M2 the databases say which.
-- **Repair from another copy**: when the library has the same game twice (e.g. WiiGames and
-  gamestation), take the good blocks from each, and keep the result only if its hash is in the
-  Redump list. Never overwrite the original; write a new file. Without a second copy the only way
-  is a new dump from the disc.
-- Maybe later: put a removed update partition back from another game of the same region whose
-  partition is byte-identical.
-- A Redump-exact dump does match: Worms 3D [GWME51] (GameCube ISO on WiiGames, the same as the
-  Redump-named one on gamestation) gives "Hash match" (2026-10-31). Every WBFS on WiiGames tried
-  gave "mismatch". Read with nod on 2026-10-31: 32 of the 48 Wii WBFS on WiiGames have no update
-  partition (*shortened*); the message now says so (#38). The other 16 have one and still don't
-  match, e.g. Disney Planes Fire & Rescue [SQQPVZ]: SHA-1 `f0bce155…` against Redump's
-  `28cacd91…` (Europe) – damaged, zeroed update partition or a nod reconstruction issue.
-- The H0–H3 check doesn't work on WBFS as it is: nod's `PartitionOptions::validate_hashes`
-  reports a bad H3 or H0 hash in the first megabytes of almost every WBFS on WiiGames (tried on
-  5 on 2026-10-31), most likely where WBFS left out unused block groups. It has to skip the
-  groups the image doesn't store, or it only works on full ISO/RVZ dumps.
-
-### M3 · Injects by content (M–L)
-
-- Find the ROM or disc inside an inject and identify it by its checksum:
-  - 3DS GBA VC: ExeFS `.code` = ROM + footer with the ROM size.
-  - 3DS forwarders (SNES, NES, GB …): the ROM in the RomFS.
-  - Wii U, unpacked: `.z64` (N64), `rom.zip` (DS), ISO (GameCube), `.nfs` (Wii).
-  - Wii U as WUP (encrypted): needs the Wii U common key, entered once by the user; never shipped.
-  - Wii U GBA (`alldata.psb.m`) and NES/SNES (inside the `.rpx`): later.
-- Extract the ROM out of an inject again.
-- RAR releases are unpacked for this in the background, once, and the result is cached.
-
-### M4 · One entry per game (M)
-
-- The library groups files and injects under their game.
-- Game view: files, injects, where it is installed, "installable on" (GBA → 3DS, Wii U; GameCube
-  → Wii with Nintendont, Wii U; Wii → Wii, Wii U; N64, DS, SNES … → Wii U).
-- Filter by target console.
-
-### M5 · Missing games and collections (M)
-
-- Per platform: have / missing, from the databases.
-- Collections: their own file in the data folder with references to game IDs; create, edit, add
-  games; progress per collection ("Zelda: 14 of 19").
-- Series are suggested from the database names, as vcinject's `library.series` does ("Pokemon -
-  Emerald Version" and "Pokemon Mystery Dungeon" → "Pokemon", with exceptions like "Mario Andretti
-  Racing"); "missing" leaves out betas, hacks, BIOS and the like, as vcinject's catalog does.
-  Port both.
-- Name matching alone isn't good enough for series ("The Legend of Zelda", "Zelda II" and "Link's
-  Awakening" are one series; "Metroid" and "Super Metroid" too). So: keep the name heuristic, and
-  add a hand-made list of important series (Mario, Zelda, Pokémon, Metroid, Kirby, Donkey Kong …)
-  with their games' IDs, which wins over the heuristic.
-- Research before building: better sources for series (e.g. Wikidata's "part of the series",
-  IGDB's franchises, MobyGames groups – licenses and offline use to check).
-
-### M5b · File management (M–L)
-
-Builds on identified games (M2) and one entry per game (M4). Everything that moves, renames or
-deletes files runs as a task (M1a) and shows a preview first.
-
-**Folder structure, configurable**
-- Per ROM source a **layout** as a template with placeholders, e.g.
-  `{platform}/{title} [{region}]/{title}.{ext}` or `{platform}/{series}/{title} ({id})`, with
-  presets for common layouts (No-Intro names, one folder per game, USB loader layout `wbfs/`).
-  Separate layouts for ROMs, injects, saves and archives (RAR, ZIP) where wanted.
-- **Organize** a source into its layout: the app shows a dry run – what moves where,
-  which names change, conflicts (two files for one target, names too long for FAT32) – and only
-  runs after confirmation. Every run is logged and can be undone from that log.
-- **Clean up**: find duplicates (same checksum), empty folders, leftovers (`.part`, unpacked RAR
-  caches, macOS `._` files), unidentified files; each as a list to review, nothing is deleted
-  silently. Deleted files go to the system's trash where there is one.
-- The layout of devices (drives, SD cards) stays what the console expects (M1b); the layout here
-  is for the collection on the computer.
-
-**Backup rules**
-- Rules per platform, source, collection or single game: *what* (ROM, saves, injects), *where*
-  (another ROM source, an external drive, a network share), *how often* (on change, daily,
-  weekly, by hand) and *how many* versions to keep (e.g. the last 10 saves, every save of the last
-  30 days).
-- Saves are versioned (timestamp, console they came from, checksum); ROMs and discs are only
-  copied once and checked by checksum afterwards.
-- A status per game and per rule: backed up, outdated, never; a report of what isn't backed up
-  anywhere (e.g. "37 games exist only on gamestation").
-- Restoring picks a version and a target (a source folder, a drive, a console over Link).
-
-**ROMs and saves in the game view**
-- The game view (M4) gets the tabs **Files** (ROMs, discs, injects with source, size, checksum,
-  identification), **Saves** (all versions per console, with date and size; back up, restore,
-  export, delete, compare) and **Backups** (which rules cover the game, last run, where the copies
-  are).
-- From there: set the game's own rule, move a file to another source, mark one copy as the main one.
-- Saves come from the consoles (3DS M6, Wii M7, Wii U M8) and from save folders on drives
-  and SD cards; until then the tab shows the save files found in the sources.
 
 ### M6a · Softmod wizard (L)
 
@@ -447,6 +483,58 @@ them and copies them into the console's backups (M1d). It doesn't go on without 
 - Injector: build 3DS injects from the library, first through vcinject as a command-line sidecar,
   later ported to Rust.
 
+**From vcinject** – what it does today and this app doesn't (compared 2026-11-10 with vcinject's
+`main`, which holds all of its branches; "M1" and "M2" items are listed in those milestones):
+
+- **Status report per console** (`status.py`): Luma3DS, vcinject Link and the installed homebrew
+  against their newest releases, the sound firmware `dspfirm.cdc` (RetroArch forwarders need it),
+  free space on the SD card; *Update* per finding and *Update all*, including Luma3DS's
+  `boot.firm`. The report is mirrored on the 3DS's screen (Link's `report` command, which the
+  client has but nothing uses). After updates that need a restart the app restarts the 3DS,
+  reconnects and says whether everything worked.
+- **Saves** (`saves.py`, `disa.py`): one zip per console and title in the data folder; restore
+  picks one. Restoring is untried on hardware in vcinject too.
+- **Titles**: save a title's icon and banner; tell official Virtual Console titles and injects
+  apart from other games (open in vcinject as well).
+- **HOME Menu** (`homemenu.py`): read the layout as on the console, arrange games and apps on the
+  SD card and move them into the existing folders; *Save to 3DS* backs up the old layout, writes
+  the new one, restarts the 3DS and checks every icon. Folders, system apps and the Game Card
+  can't be written while the system runs: vcinject plans a GodMode9 script for that (its
+  `docs/TODO.md`); the dead ends it tried are written down there.
+- **Homebrew**: besides all of Universal-DB (over 200 apps with a .cia, searchable, with
+  screenshots, the version on each 3DS and one button that installs or updates), a short
+  *Recommended* list straight from the authors' GitHub releases, only projects with an open
+  licence (DSP1, FBI Reloaded, Universal-Updater, Checkpoint, PKSM, ftpd, Anemone3DS), and
+  **News**: the latest releases of those, Luma3DS and this app.
+- **Injector**, what belongs to it besides building the CIA:
+  - Systems: GBA natively (AGB_FIRM; save types detected, 1 Mbit flash), SNES (snes9x), NES
+    (VirtuaNES), Game Boy / Color and Mega Drive (RetroArch) as forwarders. Nintendo's own
+    GB/GBC emulator is experimental in vcinject (a fresh install lacks `sav.dat`), its NES one
+    planned.
+  - **VC Console Look**: the 3D banner per console with the game's picture on the cartridge, the
+    "Virtual Console" plate in the 13 console languages, the jingle and the VC icon frame
+    (`vcbanner.py`, `cgfx.py`); Game Boy looks derived from the GBA one.
+  - **Templates** come from titles the user owns, never from the app: a setup checklist that says
+    what each system needs, checks it on every start and sets up again what is missing or damaged
+    (`health.py`), and export/import of all templates as one private backup (`backup.py`).
+    vcinject's idea to read the looks from titles installed on the 3DS over Link is open there too.
+  - **Title IDs**: a register of every build so that no ID is used twice (`registry.py`); the
+    titles on every console that runs vcinject Link count as taken, and for a 3DS without it its
+    `ticket.db` can be imported (`tickets.py`). Rebuilding a game keeps its ID, so the save stays.
+  - `makerom` and `bannertool` are needed as long as vcinject is the sidecar; its installers
+    bring them along.
+  - Per build: title, publisher, release year, own icon and banner, save type, LCD ghosting,
+    brightness, plate language; a preview of the HOME Menu icon and the rotating banner.
+- **Console pictures**: a photo of the exact model in the colour chosen per console (the 3DS
+  can't tell its colour), from Wikimedia Commons, public domain or CC0, downloaded on first use
+  (`consolephotos.py`).
+- **vcinject Link's source** stays in vcinject (`companion/`, built with devkitARM); this app
+  ships the built CIA (#11). Version 13 doesn't have the [Link protocol](LINK_PROTOCOL.md)'s
+  streams (commands 19–21) and only answers the discovery query `vcinject?`: a version 14 is
+  needed for both, see "Open questions".
+- **Views**: the size of the cards changes without steps (slider, Ctrl + mouse wheel), Cover Flow
+  next to cards and table.
+
 ### M7 · Wii (L)
 
 - Companion app (libogc) speaking the Link protocol: title list, WAD install, saves.
@@ -491,6 +579,8 @@ its own.
   with the scan watching the folders for changes.
 - Tested in CI with the image started and the API called; a test log entry (see TESTLOG.md) on a
   real NAS before the first release.
+- A **command line** on the same core, for scripts without the server: vcinject has one (`build`,
+  `verify`, `library`, `doctor`, `3ds install` …), this app none.
 
 ## Open questions
 
@@ -509,3 +599,6 @@ its own.
   results about them (2026-10-30). Their pages are linked, not copied; whether short step titles
   may be shown depends on the guides' licence, to check.
 - Wii mini (M1d, M6a): the app has to handle a USB stick in place of the SD card.
+- vcinject Link (M1, M6): where its next version is developed – in vcinject's `companion/` as
+  until now, or moved here and renamed for the protocol's `ugbm?` discovery – and whether vcinject
+  itself goes on next to this app or only as the injector's sidecar.
