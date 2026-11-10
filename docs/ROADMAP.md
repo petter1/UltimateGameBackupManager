@@ -208,6 +208,20 @@ online 3DS at once**, not one console per click.
   - **Descriptions** in the user's language from RetroGamesNexus or Wikipedia (`about.py`), also
     for games that are missing.
 
+**First pull request** (2026-11-10, branch `claude/nifty-hamilton-g6dclr`): the No-Intro lists of
+Game Boy, Game Boy Color, Game Boy Advance, NES, SNES and Mega Drive from libretro-database,
+compacted to CRC32, SHA-1, serial and name (`assets/databases/no-intro/`, 1.9 MB of text for
+about 21,000 dumps, so no Git LFS; `scripts/update-databases.py` refreshes them, built into the
+app with `include_str!`). `src/romdb.rs` identifies a ROM by SHA-1, then CRC32, then serial (only
+when every dump with that serial is the same game, so placeholders like the Mega Drive's
+"00000000-00" identify nothing). The scan reads each ROM once: checksums and serial per file in
+`library-checksums.json` next to `library.json`, found again by path, size and time of the last
+change, and by size and time alone for a renamed or moved file. ROMs with the same SHA-1 are one
+entry with copies, also zipped and unzipped. A zip with exactly one ROM is that ROM. The library
+shows the release's name and "good dump", the checksums in a tooltip. Still open for M2: the
+build and the app refreshing the lists themselves, the link to the release's entry, the other
+platforms and sources (Redump, GameTDB, 3dsdb, WiiUBrew), RAR, artwork and descriptions.
+
 ### M2b · Explain and repair bad dumps (M) – after M2
 
 Today the game info's "SHA1" button only says "Hash mismatch" (a dump's SHA-1 against the Redump
@@ -584,7 +598,9 @@ its own.
 
 ## Open questions
 
-- How large the database snapshot gets, and whether it needs Git LFS.
+- How large the database snapshot gets, and whether it needs Git LFS: the No-Intro lists of six
+  cartridge consoles are 1.9 MB of text (2026-11-10), fine without LFS; Redump and GameTDB are
+  still to measure.
 - How collections are shared between people.
 - Whether a source for series exists that is good, open and usable offline (see M5).
 - Formatting FAT32 above 32 GB with Windows' own tools: which versions allow it (see M1b).
