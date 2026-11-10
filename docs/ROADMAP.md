@@ -58,8 +58,8 @@ each item is ticked off here (and gets its test log entry) when done.
 7. **M1, first install of vcinject Link by QR code** (branch `claude/m1-link-qr-install`, on top
    of item 6): on a 3DS without vcinject Link (or with it deleted in FBI first),
    "Install vcinject Link" in My Consoles shows a QR code; in FBI, "Remote Install" → "Scan QR
-   Code" installs it, the window shows the download's progress and "has downloaded". vcinject
-   Link then starts and shows up in My Consoles. Also: the QR code button next to a CIA in the
+   Code" installs it, the window shows the download's progress and "has downloaded". Started
+   from the HOME Menu, vcinject Link shows up in My Consoles. Also: the QR code button next to a CIA in the
    library; closing the window halfway through a download (FBI must report the failed download,
    nothing half-installed). If macOS asks whether the app may accept incoming connections, that
    is needed. Test log entry.
