@@ -55,8 +55,8 @@ each item is ticked off here (and gets its test log entry) when done.
    first; gone from the list afterwards). With an older vcinject Link (e.g. 12), "Update" on the
    console's card installs version 13 and restarts it. Quit, switch the 3DS off, start again:
    the library still marks its titles as on "petter1". Test log entry.
-6. **M1, first install of vcinject Link by QR code** (branch `claude/m1-link-qr-install`, on top
-   of item 5): on a 3DS without vcinject Link (or with it deleted from the title list first),
+7. **M1, first install of vcinject Link by QR code** (branch `claude/m1-link-qr-install`, on top
+   of item 6): on a 3DS without vcinject Link (or with it deleted in FBI first),
    "Install vcinject Link" in My Consoles shows a QR code; in FBI, "Remote Install" → "Scan QR
    Code" installs it, the window shows the download's progress and "has downloaded". vcinject
    Link then starts and shows up in My Consoles. Also: the QR code button next to a CIA in the
@@ -185,11 +185,10 @@ of one task, log levels with debug lines, export.
 
 ### M1 · Install on the 3DS over Wi-Fi (M)
 
-Not built yet, and vcinject has it (compared 2026-11-10, see "From vcinject" below): **the first
-install of vcinject Link** on a 3DS that doesn't run it yet – the app serves the CIA over HTTP and
-shows a QR code that FBI scans (vcinject's `serve.py`). Without it a new 3DS still needs vcinject
-once. The same way installs any CIA on a console without vcinject Link. And **installing on every
-online 3DS at once**, not one console per click.
+Compared with vcinject on 2026-11-10 (see "From vcinject" below): **the first install of vcinject
+Link** on a 3DS that doesn't run it yet – the app serves the CIA over HTTP and shows a QR code that
+FBI scans (vcinject's `serve.py`) – is built (see below); **installing on every online 3DS at
+once**, not one console per click, is still open.
 
 - "Install" on a CIA in the library: choose the 3DS; it runs as a task (M1a), with progress on the
   computer and on the 3DS. *Built, waiting for the Mac* (`claude/m1-3ds-install-and-consoles`):
