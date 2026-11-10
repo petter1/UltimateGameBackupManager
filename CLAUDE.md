@@ -85,9 +85,6 @@ start from `main` and only see what is there, so the update goes to `main` in it
 - A ROM source or drive that doesn't answer no longer holds up the library scan (#31) or the
   settings (#28). Trying a build on macOS: BUILDING.md (#29); every re-signed test build asks again
   for removable volumes access.
-- **vcinject compared with this app** (2026-11-10, both `main`s and every branch): what vcinject
-  does and this app doesn't is in the roadmap, marked "From vcinject" (M1, M2, M2b, M4, M5, M5b,
-  M6, M9). Not planned anywhere before: the first install of vcinject Link by QR code (M1).
 - Branches to delete on GitHub (checked 2026-11-09 against the full history; cloud sessions
   can't delete them):
   - already fully in `main`: `feature/3ds-link-client`, `feature/drive-devices`,
@@ -119,6 +116,10 @@ start from `main` and only see what is there, so the update goes to `main` in it
 
 - Plan and milestones: [docs/ROADMAP.md](docs/ROADMAP.md); tests on real hardware:
   [docs/TESTLOG.md](docs/TESTLOG.md).
+- What [vcinject](https://github.com/petter1/vcinject) does and this app doesn't yet (compared
+  2026-11-10, both `main`s and every branch): in the roadmap, marked "From vcinject" in M1, M2,
+  M2b, M4, M5, M5b, M6 and M9. New in the plan since then: the first install of vcinject Link
+  by QR code (M1).
 - Branches, commits, pull requests: [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md). Checks before
   pushing, as CI runs them: `cargo fmt --check`, `cargo clippy --all-targets --locked -- -D
   warnings`, `cargo test --locked` (needs Rust 1.98 or newer: `rustup toolchain install stable`).
