@@ -16,6 +16,7 @@ mod message;
 mod n3ds;
 mod notifications;
 mod osc;
+mod romdb;
 mod state;
 mod tasks;
 mod toolbox;
@@ -68,6 +69,7 @@ async fn f16_gpu_fix() {
 
 pub fn main() -> iced::Result {
     let data_dir = get_data_dir().expect("Unable to get data directory").leak();
+    romdb::use_data_dir(data_dir);
 
     #[cfg(target_os = "linux")]
     smol::block_on(f16_gpu_fix());
