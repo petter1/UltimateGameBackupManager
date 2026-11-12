@@ -258,6 +258,15 @@ update it looks the library's ROMs up again and says which lists got newer. With
 nothing is said. Still open: the build refreshing the snapshot (see below), the link to the
 release's entry, Redump/GameTDB and the other platforms, RAR, artwork, descriptions.
 
+**Third pull request** (2026-11-13, branch `claude/library-names`): names in the library.
+Wii and GameCube discs and archives with a game ID take GameTDB's name (`twbm_idmap`, which the
+drive's games already used) in place of the disc header's internal one. Items that are only a
+title ID take the name of a folder above them: one with `[<title ID>]` in its name, else one
+that starts with a platform (`n64_…`, `wiiware_…`), else the nearest one that holds only this
+title; never past a platform's folder or a pack of several titles. On the real collection
+(2026-11-13): 142 of 3,055 names better, 43 bare title IDs left (packs and injects straight in a
+platform's folder; their names are inside the RARs).
+
 ### M2b · Explain and repair bad dumps (M) – after M2
 
 Today the game info's "SHA1" button only says "Hash mismatch" (a dump's SHA-1 against the Redump
