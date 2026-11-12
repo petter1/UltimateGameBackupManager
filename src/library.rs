@@ -202,6 +202,9 @@ pub struct LibraryItem {
     /// checksums of a ROM of a platform the app has a game database for, and what it is
     #[serde(default)]
     pub rom: Option<RomInfo>,
+    /// the Redump name of a Wii or GameCube disc, found by its game ID
+    #[serde(default)]
+    pub release: Option<String>,
 }
 
 /// What a ROM is, from its checksums
@@ -254,12 +257,21 @@ impl RomInfo {
 }
 
 impl LibraryItem {
-    /// The name to show: the release's when the ROM was identified, else the file's
+    /// The name to show: the release's when the ROM or disc was identified, else the file's
     pub fn title(&self) -> &str {
         self.rom
             .as_ref()
             .and_then(RomInfo::release)
+            .or(self.release.as_deref())
             .unwrap_or(&self.name)
+    }
+
+    /// Looks a Wii or GameCube disc up in the Redump list by its game ID
+    fn identify_disc(&mut self) {
+        self.release = match &self.id {
+            Some(ItemId::Game(id)) => romdb::disc_name(self.platform, id),
+            _ => None,
+        };
     }
 
     /// Whether the item is a Wii or GameCube disc, which can be copied to a drive
@@ -649,7 +661,7 @@ fn read_item(
                 .filter_map(|e| e.file_name().to_str().map(str::to_string))
                 .find_map(|n| id_in_name(&n))
         });
-        let item = LibraryItem {
+        let mut item = LibraryItem {
             id,
             name,
             size,
@@ -659,8 +671,10 @@ fn read_item(
             in_cloud: false,
             copies: Vec::new(),
             rom: None,
+            release: None,
             path,
         };
+        item.identify_disc();
         return Some((item, None));
     }
 
@@ -675,6 +689,7 @@ fn read_item(
             in_cloud: false,
             copies: Vec::new(),
             rom: None,
+            release: None,
             path,
         };
         return Some((item, None));
@@ -693,6 +708,7 @@ fn read_item(
         in_cloud,
         copies: Vec::new(),
         rom: None,
+        release: None,
         path,
     };
 
@@ -802,6 +818,7 @@ fn read_item(
         }
         _ => {}
     }
+    item.identify_disc();
 
     Some((item, None))
 }
@@ -1152,9 +1169,10 @@ fn read_cache(data_dir: &Path) -> Vec<LibraryItem> {
         .unwrap_or_default()
 }
 
-/// Looks the ROMs up again, after the game databases changed
+/// Looks the ROMs and discs up again, after the game databases changed
 pub fn reidentify(items: &mut [LibraryItem]) {
     for item in items {
+        item.identify_disc();
         if let Some(rom) = &mut item.rom {
             rom.identify(item.platform);
             if let Some(found) = &rom.identified {
@@ -1360,6 +1378,7 @@ mod tests {
             in_cloud: false,
             copies: Vec::new(),
             rom: None,
+            release: None,
         };
         let mut library = LibraryState {
             items: vec![
@@ -1401,6 +1420,7 @@ mod tests {
                 PathBuf::from("/Volumes/b/backup/Metroid_Fusion.gba"),
             ],
             rom: None,
+            release: None,
         };
 
         let from_b = previous_items_in(std::slice::from_ref(&item), Path::new("/Volumes/b"));
@@ -1577,6 +1597,7 @@ mod tests {
             in_cloud: false,
             copies: Vec::new(),
             rom: None,
+            release: None,
         };
         assert!(item("/x/WiiU/Cars_3_EUR_WiiU-CAT", ItemKind::Archive).is_folder());
         assert!(!item("/x/WiiU/Cars 3.rar", ItemKind::Archive).is_folder());
