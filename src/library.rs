@@ -1058,6 +1058,16 @@ pub async fn load_cache(data_dir: &'static Path) -> Vec<LibraryItem> {
         // looks the ROMs up again when it gets the items)
         reidentify(&mut items);
 
+        // the databases may be newer than the cache
+        for item in &mut items {
+            if let Some(rom) = &mut item.rom {
+                rom.identify(item.platform);
+                if let Some(found) = &rom.identified {
+                    item.platform = found.platform;
+                }
+            }
+        }
+
         // icons aren't cached; a CIA's are read from a few KB of it
         for item in items
             .iter_mut()
