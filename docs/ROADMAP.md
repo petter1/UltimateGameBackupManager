@@ -258,6 +258,17 @@ update it looks the library's ROMs up again and says which lists got newer. With
 nothing is said. Still open: the build refreshing the snapshot (see below), the link to the
 release's entry, Redump/GameTDB and the other platforms, RAR, artwork, descriptions.
 
+**Third pull request** (2026-11-12, branch `claude/m2-redump-names`, on top of the second): the
+Redump lists of Wii and GameCube from libretro-database (`assets/databases/redump/`, 650 KB),
+shipped and refreshed like the No-Intro ones; downloaded lists now live in `databases/<source>/`
+in the data folder, the state in `databases/state.json`. Their serials carry the game code (`RVL-
+RMGP-EUR`), so the library names a Wii or GameCube disc by its game ID without reading it ("Super
+Mario Galaxy (Europe, Australia) (En,Fr,De,Es,It)"), the discs and revisions of a game as one
+name; 54 of about 5,200 game codes have several names (other regions on one code), which leave
+only the title they share, or no name for 5. The hash task names the release on a match ("SHA1 is
+well known as Worms 3D (USA) (En,Fr)"). Still open: GameTDB for the 3DS and Wii U titles, the
+link to the release's entry, the build refreshing the snapshot, RAR, artwork, descriptions.
+
 ### M2b · Explain and repair bad dumps (M) – after M2
 
 Today the game info's "SHA1" button only says "Hash mismatch" (a dump's SHA-1 against the Redump
@@ -637,8 +648,8 @@ its own.
 ## Open questions
 
 - How large the database snapshot gets, and whether it needs Git LFS: the No-Intro lists of six
-  cartridge consoles are 1.9 MB of text (2026-11-10), fine without LFS; Redump and GameTDB are
-  still to measure.
+  cartridge consoles are 1.9 MB of text (2026-11-10), the Redump lists of Wii and GameCube
+  0.65 MB (2026-11-12), fine without LFS; GameTDB is still to measure.
 - How collections are shared between people.
 - Whether a source for series exists that is good, open and usable offline (see M5).
 - Formatting FAT32 above 32 GB with Windows' own tools: which versions allow it (see M1b).
