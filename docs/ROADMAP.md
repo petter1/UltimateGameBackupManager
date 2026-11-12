@@ -45,24 +45,11 @@ each item is ticked off here (and gets its test log entry) when done.
 5. **M1c, copy all to drive** (#41): in the library search a small Wii or GameCube game that
    isn't on WiiGames, "Copy all to drive" → one import task; search one that is there → the
    button is gone. Test log entry.
-8. **M2, game databases** (#48 and #53 on top of it; numbered 8 because the branches of #11,
-   #13 and #49 bring items 6 and 7): merged only after Claude tried them on the Mac (the
-   maintainer's decision, 2026-11-10). A portable debug build of #53's branch (it has #48 too)
-   with the real ROM folder as the only ROM source; the scan only reads it.
-   - #48: the library shows release names instead of file names, "✓ good dump (No-Intro)" and
-     the checksums in the tooltip; a zip with one ROM next to the same ROM unpacked is one entry
-     with two copies; `library-checksums.json` is written, and after renaming a ROM the next
-     scan doesn't read it again (fast) and still knows it.
-   - #53: a start with the network writes `databases/no-intro/state.json` in the data folder
-     with six ETags and shows no message (libretro-database is still at the shipped version); a
-     start without the network shows nothing either; a hand-made `databases/no-intro/gba.tsv`
-     with a later version in its first line (e.g. `2099.01.01`) and one line with a real ROM's
-     checksums under a made-up name shows that name after a restart, and the real one again
-     once the file is deleted.
-   - #56 (on top of #53; a build of its branch tests all three): the Wii and GameCube discs in
-     the library show their Redump names (e.g. Worms 3D [GWME51] as "Worms 3D (USA) (En,Fr)"),
-     and "Hash match" on that game names the release.
-   Test log entry; then Claude merges #48, retargets #53 to `main` and merges it, then #56.
+8. ~~**M2, game databases** (#48, #53 and #56 on top of them)~~: done 2026-11-12/13 on Linux
+   with the real collection (gamestation, HFS+ mounted read-only; the maintainer agreed that this
+   counts in place of the Mac), see the test log. #56 named 14 hacks after other games; fixed
+   before merging. Found on the way, for later in M2: zips renamed to `.gba` are read as raw ROMs
+   (9 files, #59), and `.7z` isn't read yet.
 
 ## How the app is meant to work
 
