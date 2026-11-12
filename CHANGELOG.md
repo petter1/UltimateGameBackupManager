@@ -37,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The same works for any CIA in the library (the QR code button next to it).
 - 🔍 "Hash mismatch" says why when it can: a Wii dump without its update partition (often removed
   when making a WBFS) can't match the disc, though that alone doesn't stop the game from working.
+- 🏷️ The library names Wii and GameCube discs as Redump does (e.g. "Super Mario Galaxy (Europe,
+  Australia) (En,Fr,De,Es,It)"), by their game ID and without reading them, and "Hash match" names
+  the release. The Redump lists come with the app and are refreshed once a day.
 - 🔍 Checking the hash of a GameCube game on two discs checks both discs; it only says "Hash
   match" when both are known good dumps, and otherwise which disc doesn't match.
 - ☕ The computer doesn't go to sleep from idleness while games are imported, converted,
@@ -50,6 +53,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the cloud are left out, and nothing is copied when they don't fit.
 - 🎮 A disc that is already waiting or being imported isn't added to the queue again (the same
   game picked twice, or from two files).
+- 🗂️ ROMs of the Game Boy, Game Boy Color, Game Boy Advance, NES, SNES and Mega Drive are
+  identified by their checksum against the No-Intro lists (from libretro-database, shipped with
+  the app): the library shows the release's name and whether the file is a known good dump, and
+  the CRC32, SHA-1 and cartridge serial when the pointer rests on it. A renamed or moved ROM is
+  recognised without being read again, and the same ROM in several places (also zipped) is one
+  entry with copies.
+- 🗜️ A zip with one ROM in it is read like the unpacked ROM, also outside a platform's folder,
+  and also when it is named like a ROM (`game.gba`).
+- 🔄 The No-Intro lists stay current without a new version of the app: once a day the app asks
+  libretro-database for lists that changed (only those are downloaded) and uses a newer one in
+  place of the one it ships, saying which lists got newer. Without a network it keeps the lists it
+  has, without a message; `UGBM_DISABLE_UPDATES=1` turns the check off.
+- 🏷️ Wii and GameCube discs without a Redump name (hacks, custom discs) get GameTDB's name for
+  their game ID instead of the disc's own ("Guitar Hero III Custom : Queen" for "Guitar Hero
+  Queen"), also archives named with a game ID. A Wii U inject or forwarder that is only a title
+  ID ("0005000010104857") takes its name from the folders above it ("the legend of zelda ocarina
+  of time usa"), unless they are a platform's folder or a pack of several titles.
 
 ## [v6.1.9] - 2026-10-21
 

@@ -63,21 +63,11 @@ each item is ticked off here (and gets its test log entry) when done.
    library; closing the window halfway through a download (FBI must report the failed download,
    nothing half-installed). If macOS asks whether the app may accept incoming connections, that
    is needed. Test log entry.
-8. **M2, game databases** (#48 and #53 on top of it; numbered 8 because the branches of #11,
-   #13 and #49 bring items 6 and 7): merged only after Claude tried them on the Mac (the
-   maintainer's decision, 2026-11-10). A portable debug build of #53's branch (it has #48 too)
-   with the real ROM folder as the only ROM source; the scan only reads it.
-   - #48: the library shows release names instead of file names, "✓ good dump (No-Intro)" and
-     the checksums in the tooltip; a zip with one ROM next to the same ROM unpacked is one entry
-     with two copies; `library-checksums.json` is written, and after renaming a ROM the next
-     scan doesn't read it again (fast) and still knows it.
-   - #53: a start with the network writes `databases/no-intro/state.json` in the data folder
-     with six ETags and shows no message (libretro-database is still at the shipped version); a
-     start without the network shows nothing either; a hand-made `databases/no-intro/gba.tsv`
-     with a later version in its first line (e.g. `2099.01.01`) and one line with a real ROM's
-     checksums under a made-up name shows that name after a restart, and the real one again
-     once the file is deleted.
-   Test log entry; then Claude merges #48, retargets #53 to `main` and merges it.
+8. ~~**M2, game databases** (#48, #53 and #56 on top of them)~~: done 2026-11-12/13 on Linux
+   with the real collection (gamestation, HFS+ mounted read-only; the maintainer agreed that this
+   counts in place of the Mac), see the test log. #56 named 14 hacks after other games; fixed
+   before merging. Found on the way, for later in M2: zips renamed to `.gba` are read as raw ROMs
+   (9 files, #59), and `.7z` isn't read yet.
 
 ## How the app is meant to work
 
@@ -270,6 +260,53 @@ once**, not one console per click, is still open.
     carry on at the next start.
   - **Descriptions** in the user's language from RetroGamesNexus or Wikipedia (`about.py`), also
     for games that are missing.
+
+**First pull request** (2026-11-10, branch `claude/nifty-hamilton-g6dclr`): the No-Intro lists of
+Game Boy, Game Boy Color, Game Boy Advance, NES, SNES and Mega Drive from libretro-database,
+compacted to CRC32, SHA-1, serial and name (`assets/databases/no-intro/`, 1.9 MB of text for
+about 21,000 dumps, so no Git LFS; `scripts/update-databases.py` refreshes them, built into the
+app with `include_str!`). `src/romdb.rs` identifies a ROM by SHA-1, then CRC32, then serial (only
+when every dump with that serial is the same game, so placeholders like the Mega Drive's
+"00000000-00" identify nothing). The scan reads each ROM once: checksums and serial per file in
+`library-checksums.json` next to `library.json`, found again by path, size and time of the last
+change, and by size and time alone for a renamed or moved file. ROMs with the same SHA-1 are one
+entry with copies, also zipped and unzipped. A zip with exactly one ROM is that ROM. The library
+shows the release's name and "good dump", the checksums in a tooltip. Still open for M2: the
+build and the app refreshing the lists themselves, the link to the release's entry, the other
+platforms and sources (Redump, GameTDB, 3dsdb, WiiUBrew), RAR, artwork and descriptions.
+
+**Second pull request** (2026-11-10, branch `claude/kind-cori-0fsoio`, on top of the first): at
+run time the app checks for newer lists and falls back to the shipped ones. Once a day (and at
+the next start when a download failed) it asks libretro-database for the six DATs with the ETag
+of the last download, so an unchanged list costs a `304`; a changed one is compacted in Rust the
+same way as `scripts/update-databases.py` (a test compares both on the real DATs) and kept in
+`databases/no-intro/` in the data folder when its version (a date) is newer than the one in use.
+At start the app uses, per list, the newer of the shipped and the downloaded one; after an
+update it looks the library's ROMs up again and says which lists got newer. Without a network
+nothing is said. Still open: the build refreshing the snapshot (see below), the link to the
+release's entry, Redump/GameTDB and the other platforms, RAR, artwork, descriptions.
+
+**Third pull request** (#56, 2026-11-12, branch `claude/quick-help-dhxs0v`, on top of the second): the
+Redump lists of Wii and GameCube from libretro-database (`assets/databases/redump/`, 650 KB),
+shipped and refreshed like the No-Intro ones; downloaded lists now live in `databases/<source>/`
+in the data folder, the state in `databases/state.json`. Their serials carry the game code (`RVL-
+RMGP-EUR`), so the library names a Wii or GameCube disc by its game ID without reading it ("Super
+Mario Galaxy (Europe, Australia) (En,Fr,De,Es,It)"), the discs and revisions of a game as one
+name; 54 of about 5,200 game codes have several names (other regions on one code), which leave
+only the title they share, or no name for 5. The hash task names the release on a match ("SHA1 is
+well known as Worms 3D (USA) (En,Fr)"). Still open: GameTDB for the 3DS and Wii U titles, the
+link to the release's entry, the build refreshing the snapshot, RAR, artwork, descriptions.
+
+**Fourth pull request** (#58, 2026-11-13, branch `claude/library-names`): names in the library
+for what Redump doesn't name. A Wii or GameCube disc (or an archive with a game ID) without a
+Redump name, mostly hacks and custom discs, takes GameTDB's name (`twbm_idmap`, which the
+drive's games already used) in place of the disc header's internal one ("Guitar Hero III Custom :
+Queen" for "Guitar Hero Queen"); the order is Redump, GameTDB, the disc. Items that are only a
+title ID take the name of a folder above them: one with `[<title ID>]` in its name, else one
+that starts with a platform (`n64_…`, `wiiware_…`), else the nearest one that holds only this
+title; never past a platform's folder or a pack of several titles. On the real collection
+(2026-11-13): 57 of 100 bare title IDs named, 43 left (packs and injects straight in a
+platform's folder; their names are inside the RARs).
 
 ### M2b · Explain and repair bad dumps (M) – after M2
 
@@ -649,7 +686,9 @@ its own.
 
 ## Open questions
 
-- How large the database snapshot gets, and whether it needs Git LFS.
+- How large the database snapshot gets, and whether it needs Git LFS: the No-Intro lists of six
+  cartridge consoles are 1.9 MB of text (2026-11-10), the Redump lists of Wii and GameCube
+  0.65 MB (2026-11-12), fine without LFS; GameTDB is still to measure.
 - How collections are shared between people.
 - Whether a source for series exists that is good, open and usable offline (see M5).
 - Formatting FAT32 above 32 GB with Windows' own tools: which versions allow it (see M1b).
