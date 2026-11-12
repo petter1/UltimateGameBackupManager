@@ -202,6 +202,9 @@ pub struct LibraryItem {
     /// checksums of a ROM of a platform the app has a game database for, and what it is
     #[serde(default)]
     pub rom: Option<RomInfo>,
+    /// the Redump name of a Wii or GameCube disc, found by its game ID
+    #[serde(default)]
+    pub release: Option<String>,
 }
 
 /// What a ROM is, from its checksums
@@ -254,12 +257,21 @@ impl RomInfo {
 }
 
 impl LibraryItem {
-    /// The name to show: the release's when the ROM was identified, else the file's
+    /// The name to show: the release's when the ROM or disc was identified, else the file's
     pub fn title(&self) -> &str {
         self.rom
             .as_ref()
             .and_then(RomInfo::release)
+            .or(self.release.as_deref())
             .unwrap_or(&self.name)
+    }
+
+    /// Looks a Wii or GameCube disc up in the Redump list by its game ID
+    fn identify_disc(&mut self) {
+        self.release = match &self.id {
+            Some(ItemId::Game(id)) => romdb::disc_name(self.platform, id),
+            _ => None,
+        };
     }
 
     /// Whether the item is a Wii or GameCube disc, which can be copied to a drive
@@ -513,12 +525,7 @@ fn check_rom(
             ..c.clone()
         },
         None => {
-            let mut data = read_rom(&item.path, member)?;
-            // a zip under a ROM's name ("game.gba"): the one ROM in it
-            if member.is_none() && data.starts_with(b"PK\x03\x04") {
-                let (member, _) = single_rom_in_zip(&item.path)?;
-                data = read_rom(&item.path, Some(&member))?;
-            }
+            let data = read_rom(&item.path, member)?;
             let hashes = romdb::hash_rom(item.platform, &data);
             Checked {
                 path: item.path.clone(),
@@ -563,7 +570,7 @@ fn read_item(
                 .filter_map(|e| e.file_name().to_str().map(str::to_string))
                 .find_map(|n| id_in_name(&n))
         });
-        let item = LibraryItem {
+        let mut item = LibraryItem {
             id,
             name,
             size,
@@ -573,8 +580,10 @@ fn read_item(
             in_cloud: false,
             copies: Vec::new(),
             rom: None,
+            release: None,
             path,
         };
+        item.identify_disc();
         return Some((item, None));
     }
 
@@ -589,6 +598,7 @@ fn read_item(
             in_cloud: false,
             copies: Vec::new(),
             rom: None,
+            release: None,
             path,
         };
         return Some((item, None));
@@ -607,6 +617,7 @@ fn read_item(
         in_cloud,
         copies: Vec::new(),
         rom: None,
+        release: None,
         path,
     };
 
@@ -693,6 +704,7 @@ fn read_item(
         }
         _ => {}
     }
+    item.identify_disc();
 
     Some((item, None))
 }
@@ -1043,9 +1055,10 @@ fn read_cache(data_dir: &Path) -> Vec<LibraryItem> {
         .unwrap_or_default()
 }
 
-/// Looks the ROMs up again, after the game databases changed
+/// Looks the ROMs and discs up again, after the game databases changed
 pub fn reidentify(items: &mut [LibraryItem]) {
     for item in items {
+        item.identify_disc();
         if let Some(rom) = &mut item.rom {
             rom.identify(item.platform);
             if let Some(found) = &rom.identified {
@@ -1203,6 +1216,7 @@ mod tests {
             in_cloud: false,
             copies: Vec::new(),
             rom: None,
+            release: None,
         };
         let mut library = LibraryState {
             items: vec![
@@ -1244,6 +1258,7 @@ mod tests {
                 PathBuf::from("/Volumes/b/backup/Metroid_Fusion.gba"),
             ],
             rom: None,
+            release: None,
         };
 
         let from_b = previous_items_in(std::slice::from_ref(&item), Path::new("/Volumes/b"));
@@ -1294,11 +1309,6 @@ mod tests {
             &root.join("Downloads/two.zip"),
             &[("a.gba", &rom), ("b.gba", &gba_rom(b"BPEE", 2))],
         );
-        // a zip under a ROM's name
-        write_zip(
-            &root.join("GBA/Metroid Fusion copy.gba"),
-            &[("Metroid Fusion (USA).gba", &rom)],
-        );
         // no ROM at all: an archive in a platform's folder, nothing elsewhere
         write_zip(&root.join("GBA/saves.zip"), &[("a.sav", b"save")]);
         write_zip(&root.join("Downloads/photos.zip"), &[("a.jpg", b"jpg")]);
@@ -1313,9 +1323,9 @@ mod tests {
             ]
         );
 
-        // the same data zipped, unpacked and zipped under a ROM's name: one game, two copies
+        // the same data zipped and unpacked: one game with two copies
         let fusion = &items[0];
-        assert_eq!(fusion.copies.len(), 2);
+        assert_eq!(fusion.copies.len(), 1);
         let info = fusion.rom.as_ref().unwrap();
         assert_eq!(info.crc32, crc32fast::hash(&rom));
         assert_eq!(info.serial.as_deref(), Some("AMTE"));
@@ -1425,6 +1435,7 @@ mod tests {
             in_cloud: false,
             copies: Vec::new(),
             rom: None,
+            release: None,
         };
         assert!(item("/x/WiiU/Cars_3_EUR_WiiU-CAT", ItemKind::Archive).is_folder());
         assert!(!item("/x/WiiU/Cars 3.rar", ItemKind::Archive).is_folder());
