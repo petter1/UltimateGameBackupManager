@@ -406,8 +406,51 @@ pub struct Identified {
 /// The Redump name of a Wii or GameCube disc by its game ID, e.g. "Super Mario Galaxy (Europe)
 /// (En,Fr,De,Es,It)" for "RMGP01"; without the disc's number and revision, which the game ID
 /// doesn't tell
+///
+/// Hacks and custom discs often keep another game's code under their own maker code
+/// ("RMCE13" is a Wiimms Mario Kart Wii mod, "RQQE52" a Guitar Hero III custom on Backyard
+/// Football's code), which the Redump serials don't have. So when GameTDB knows the whole game
+/// ID under a different name, that disc isn't the Redump release and gets no name here.
 pub fn disc_name(platform: Platform, game_id: &str) -> Option<String> {
-    active().disc_by_game_id(platform, game_id)
+    let release = active().disc_by_game_id(platform, game_id)?;
+    match twbm_idmap::get_title(game_id) {
+        Some(title) if !names_the_same_game(title, &release) => None,
+        _ => Some(release),
+    }
+}
+
+/// The letter without its accent ("é" is "e"), for comparing names; other characters as they are
+fn without_accent(c: char) -> char {
+    const ACCENTED: &str = "ÀÁÂÃÄÅàáâãäåÇçÈÉÊËèéêëÌÍÎÏìíîïÑñÒÓÔÕÖØòóôõöøÙÚÛÜùúûüÝýÿ";
+    const PLAIN: &str = "AAAAAAaaaaaaCcEEEEeeeeIIIIiiiiNnOOOOOOooooooUUUUuuuuYyy";
+    ACCENTED
+        .chars()
+        .position(|a| a == c)
+        .and_then(|i| PLAIN.chars().nth(i))
+        .unwrap_or(c)
+}
+
+/// Whether GameTDB's title of a game ID and a Redump name are the same game: every word of the
+/// title (of three letters or more, or a number) is in the Redump name, regardless of case,
+/// accents and punctuation. A title without such words (Japanese) and GameTDB's placeholder
+/// "Scene release" say nothing.
+fn names_the_same_game(gametdb: &str, redump: &str) -> bool {
+    fn words(name: &str) -> Vec<String> {
+        let folded: String = name.chars().map(without_accent).collect();
+        folded
+            .split(|c: char| !c.is_ascii_alphanumeric())
+            .filter(|w| w.len() >= 3 || (!w.is_empty() && w.chars().all(|c| c.is_ascii_digit())))
+            .map(str::to_ascii_lowercase)
+            .collect()
+    }
+
+    if gametdb.to_ascii_lowercase().starts_with("scene release") {
+        return true;
+    }
+    // the Redump name without its regions and languages: "(Europe) (En,Fr,De,Es,It)"
+    let redump = redump.split(" (").next().unwrap_or(redump);
+    let redump = words(redump);
+    words(gametdb).iter().all(|word| redump.contains(word))
 }
 
 /// The Redump name of the Wii or GameCube disc with this SHA-1 (of the whole disc), when it is a
@@ -488,6 +531,50 @@ pub fn has_database(platform: Platform) -> bool {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn a_hack_on_another_games_code_gets_no_redump_name() {
+        for (gametdb, redump) in [
+            (
+                "Mario Kart: Double Dash!!",
+                "Mario Kart - Double Dash!! (Europe, Australia)",
+            ),
+            (
+                "Pokemon Battle Revolution",
+                "Pokemon Battle Revolution (Europe, Australia)",
+            ),
+            (
+                "Die drei ???: Das verfluchte Schloss",
+                "drei Fragezeichen, Die - Das verfluchte Schloss (Germany)",
+            ),
+            (
+                "Scene release [SE8P41]",
+                "Just Dance 2018 (Europe) (En,Fr,De,Es,It,Nl)",
+            ),
+        ] {
+            assert!(names_the_same_game(gametdb, redump), "{gametdb}");
+        }
+        for (gametdb, redump) in [
+            (
+                "Wiimms MKW Fun 2012-01.ntsc",
+                "Mario Kart Wii (USA) (En,Fr,Es)",
+            ),
+            (
+                "Guitar Hero III Custom : Queen",
+                "Backyard Football '09 (USA)",
+            ),
+            (
+                "Super Mario Skyland",
+                "New Super Mario Bros. Wii (USA) (En,Fr,Es)",
+            ),
+            (
+                "Mario Kart Wii CTGP Revolution",
+                "Mario Kart Wii (USA) (En,Fr,Es)",
+            ),
+        ] {
+            assert!(!names_the_same_game(gametdb, redump), "{gametdb}");
+        }
+    }
     use super::*;
 
     #[test]
