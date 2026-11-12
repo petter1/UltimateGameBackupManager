@@ -59,7 +59,10 @@ each item is ticked off here (and gets its test log entry) when done.
      with a later version in its first line (e.g. `2099.01.01`) and one line with a real ROM's
      checksums under a made-up name shows that name after a restart, and the real one again
      once the file is deleted.
-   Test log entry; then Claude merges #48, retargets #53 to `main` and merges it.
+   - #56 (on top of #53; a build of its branch tests all three): the Wii and GameCube discs in
+     the library show their Redump names (e.g. Worms 3D [GWME51] as "Worms 3D (USA) (En,Fr)"),
+     and "Hash match" on that game names the release.
+   Test log entry; then Claude merges #48, retargets #53 to `main` and merges it, then #56.
 
 ## How the app is meant to work
 
@@ -258,7 +261,7 @@ update it looks the library's ROMs up again and says which lists got newer. With
 nothing is said. Still open: the build refreshing the snapshot (see below), the link to the
 release's entry, Redump/GameTDB and the other platforms, RAR, artwork, descriptions.
 
-**Third pull request** (2026-11-12, branch `claude/m2-redump-names`, on top of the second): the
+**Third pull request** (#56, 2026-11-12, branch `claude/quick-help-dhxs0v`, on top of the second): the
 Redump lists of Wii and GameCube from libretro-database (`assets/databases/redump/`, 650 KB),
 shipped and refreshed like the No-Intro ones; downloaded lists now live in `databases/<source>/`
 in the data folder, the state in `databases/state.json`. Their serials carry the game code (`RVL-
