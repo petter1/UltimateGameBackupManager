@@ -81,8 +81,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   server. Each picture is downloaded once after a scan and kept small (about 30 KB) in the data
   folder; when the server has it under an older name of the release, that one is found too.
 - 🗂️ The library looks like the list of games on the drive: cards with the cover, ID, size and
-  buttons, or a table, switched with the same buttons; details and checksums in a tooltip, a
-  button that shows the file in its folder.
+  buttons, or a table, switched with the same buttons, and an "Info" window like the game info,
+  with the cover larger, what the game database says, the checksums and the release's link.
 
 ## [v6.1.9] - 2026-10-21
 

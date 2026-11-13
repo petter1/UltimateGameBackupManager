@@ -153,6 +153,10 @@ impl AppState {
 
                 Task::none()
             }
+            Message::OpenLibraryInfo(path) => {
+                self.current_modal = Some(Modal::LibraryInfo(path));
+                Task::none()
+            }
             Message::OpenGameInfo(game) => {
                 self.current_modal = Some(Modal::GameInfo((game.clone(), None, false)));
 

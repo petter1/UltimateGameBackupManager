@@ -342,13 +342,16 @@ download of all covers with progress, descriptions.
 
 **Tenth pull request** (2026-11-13, branch `claude/m2-library-cards`, on top of the ninth): the
 library takes the design of the games on the drive (the maintainer's wish): as a grid, cards of
-169.5 pixels with the game ID (a 3DS title ID's unique half, a ROM's serial) and size, the cover
-96 pixels high (the platform's icon when there is none), the title, "Copy" to the drive or where
-the game is already, the release in libretro-database and "Show in its folder"; as a table, a
-row per item with the same buttons. Grid or table is the drive's setting (`view_as`); the
-search is the drive's search bar. Platform, kind, copies, the database's verdict and the
-checksums are in a tooltip on the cover and the title. Seen on the maintainer's Linux computer
-with the real collection, both views.
+169.5 pixels exactly as `game_card` (tag, game ID or a 3DS title ID's unique half or a ROM's
+serial, size; the cover 96 pixels high, the platform's icon when there is none; the title;
+"Info", the release in libretro-database, then "Copy to drive", a check mark where the game is
+already, or "Show in its folder"); as a table, a row per item with the same buttons. Grid or
+table is the drive's setting (`view_as`); the search is the drive's search bar. "Info" opens a
+window like the game info (`src/ui/modals/library_info.rs`): title, path, system, kind, size,
+ID, the database's verdict, CRC32 and SHA-1, copies, where it is, the cover 200 pixels high,
+the release's link and "Copy to drive". Seen on the maintainer's Linux computer with the real
+collection, both views and the info window; this is the "game info showing them larger" of the
+ninth pull request's open points, for ROMs.
 
 ### M2b · Explain and repair bad dumps (M) – after M2
 

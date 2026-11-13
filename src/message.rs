@@ -106,6 +106,7 @@ pub enum Message {
     GotBoxart(Platform, String, PathBuf),
     /// the release's entry in libretro-database: the list's platform and the release's name
     OpenRelease(Platform, String),
+    OpenLibraryInfo(PathBuf),
     CopyShownToDrive,
     GotDrives(Vec<Drive>),
     OpenDrive(PathBuf, Page),
