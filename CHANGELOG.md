@@ -71,6 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ("Fast & Furious: Showdown"), keeping what follows the code ("Minecraft: Wii U Edition
   (v400)", "… (DLC)"), so a game, its update and its DLC stay apart. vWii titles and forwarders
   of Wii and GameCube games ("WUP-N-RMCP") get the Redump name of that game.
+- 🔗 A ROM that is a known dump links to its release's entry in libretro-database on GitHub
+  ("libretro-database" next to "good dump" in the library), where the release is listed with its
+  checksums and serial; at the release's line once the app has checked for newer lists. Not for
+  NES ROMs: GitHub doesn't show that list, it is too large.
 
 ## [v6.1.9] - 2026-10-21
 

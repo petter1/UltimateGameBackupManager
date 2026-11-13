@@ -295,6 +295,18 @@ the SMDH, and there are no cartridge dumps in the collection, so GameTDB's 3DS l
 cartridge dumps (`.3ds`, `.cci`) are read. Still open: the app refreshing GameTDB's list, the
 link to the release's entry, artwork, descriptions.
 
+**Seventh pull request** (2026-11-13, branch `claude/m2-release-link`): the link to the release's
+entry. A ROM identified by checksum shows "libretro-database" next to "good dump"; it opens the
+release in its DAT on GitHub (libretro has no game pages; vcinject links the same way). The line
+can't be in the shipped lists (every new game upstream would move all lines after it, and a list
+update would change the whole file), so the check for newer lists notes the line of each game
+(`databases/<source>/<list>-lines.tsv`) whenever it downloads a DAT, and downloads a DAT again
+when that file is missing; until then the link opens the DAT at the top. No link for NES ROMs:
+GitHub doesn't show that DAT (3 MB). On the real collection the line was right for all 125
+identified ROMs. Still open: the app refreshing GameTDB's list, artwork, descriptions; a link
+for Wii and GameCube discs (the game info has the Redump name only by game ID, without disc and
+revision).
+
 ### M2b · Explain and repair bad dumps (M) – after M2
 
 Today the game info's "SHA1" button only says "Hash mismatch" (a dump's SHA-1 against the Redump

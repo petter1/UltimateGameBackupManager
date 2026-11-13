@@ -82,6 +82,13 @@ impl List {
         format!("{}/{}", self.source(), self.file_name())
     }
 
+    /// Where the last check for newer lists noted the line of each game in the DAT, below the
+    /// folder of the databases, e.g. "redump/wii-lines.tsv"
+    fn lines_path(self) -> String {
+        let stem = self.file_name().trim_end_matches(".tsv");
+        format!("{}/{stem}-lines.tsv", self.source())
+    }
+
     /// The DAT's name in libretro-database (`metadat/<source>/<name>.dat`)
     fn dat_name(self) -> &'static str {
         match self {
@@ -133,6 +140,14 @@ impl List {
             Platform::MegaDrive => &[Self::MegaDrive],
             _ => &[],
         }
+    }
+
+    /// The list of `platform`'s games, e.g. the Game Boy Color list for a Game Boy Color game
+    /// (whose file may be a `.gb`)
+    fn of(platform: Platform) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|list| list.platform() == platform)
     }
 
     /// The list of a disc of `platform`
@@ -502,6 +517,38 @@ pub fn disc_by_sha1(platform: Platform, sha1: &[u8; 20]) -> Option<String> {
     active().disc_by_sha1(platform, sha1).map(str::to_string)
 }
 
+/// The DATs on GitHub, where the link to a release's entry points
+const DAT_PAGES: &str = "https://github.com/libretro/libretro-database/blob/master/metadat/";
+
+/// Whether [`release_url`] has a page for releases of `platform`: GitHub doesn't show the NES
+/// DAT (3 MB, larger than it shows)
+pub fn has_release_page(platform: Platform) -> bool {
+    List::of(platform).is_some_and(|list| list != List::Nes)
+}
+
+/// The release's entry in libretro-database on GitHub: libretro has no game pages, its DAT is
+/// where the release is listed with its checksums and serial. At the release's line when the
+/// last check for newer lists saw it there, else at the top of the DAT. `platform` is the
+/// list's ([`Identified::platform`]).
+pub fn release_url(platform: Platform, release: &str) -> Option<String> {
+    if !has_release_page(platform) {
+        return None;
+    }
+    let list = List::of(platform)?;
+    let mut url = format!(
+        "{DAT_PAGES}{}/{}.dat",
+        list.source(),
+        list.dat_name().replace(' ', "%20")
+    );
+    if let Some(line) = DOWNLOADED
+        .get()
+        .and_then(|dir| update::line_of(dir, list, release))
+    {
+        url.push_str(&format!("#L{line}"));
+    }
+    Some(url)
+}
+
 /// Looks a ROM up in the lists of its platform: by SHA-1, then CRC32, then serial
 pub fn identify(platform: Platform, rom: &RomHashes) -> Option<Identified> {
     active().identify(platform, rom)
@@ -574,6 +621,27 @@ pub fn has_database(platform: Platform) -> bool {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn a_release_links_to_its_dat_on_github() {
+        use crate::library::Platform;
+        // the line comes from the data folder, which tests don't set
+        assert_eq!(
+            super::release_url(Platform::GameBoyAdvance, "Metroid Fusion (USA)").as_deref(),
+            Some(
+                "https://github.com/libretro/libretro-database/blob/master/metadat/no-intro/\
+                 Nintendo%20-%20Game%20Boy%20Advance.dat"
+            )
+        );
+        assert!(
+            super::release_url(Platform::GameCube, "x")
+                .unwrap()
+                .ends_with("/redump/Nintendo%20-%20GameCube.dat")
+        );
+        // GitHub doesn't show the NES DAT
+        assert_eq!(super::release_url(Platform::Nes, "x"), None);
+        assert!(!super::has_release_page(Platform::WiiU));
+    }
 
     #[test]
     fn wii_u_titles_are_named_by_their_product_code() {

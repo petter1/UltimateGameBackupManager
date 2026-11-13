@@ -6,6 +6,9 @@
 //! keeps a list in the data folder when it is newer than the one in use. Without a network, or
 //! when libretro-database doesn't answer, the lists in use stay: the shipped ones, or the ones
 //! downloaded earlier.
+//!
+//! Each download also notes the line of every game in the DAT, for the link to a release's
+//! entry on GitHub ([`super::release_url`]).
 
 use super::{List, downloaded_dir, header_version, is_newer, reload};
 use crate::util::http::{self, Changed};
@@ -92,10 +95,16 @@ fn update_lists(
             list.source(),
             list.dat_name().replace(' ', "%20")
         );
-        let etag = state.etags.get(&list.path()).map(String::as_str);
+        // without the lines the DAT is downloaded again, also when it didn't change
+        let etag = state
+            .etags
+            .get(&list.path())
+            .filter(|_| dir.join(list.lines_path()).is_file())
+            .map(String::as_str);
         let result = fetch(&url, etag).and_then(|changed| match changed {
             Some(changed) => {
                 let version = save_if_newer(dir, list, &changed.text)?;
+                save_lines(dir, list, &changed.text)?;
                 // remembered also when the list isn't newer: no need to download it again
                 if let Some(etag) = changed.etag {
                     state.etags.insert(list.path(), etag);
@@ -155,6 +164,44 @@ fn save_if_newer(dir: &Path, list: List, dat: &str) -> Result<Option<String>> {
     file.write_all(to_text(list, &version, &lines).as_bytes())?;
     file.persist(&path)?;
     Ok(Some(version))
+}
+
+/// Notes the line of each game in a downloaded DAT (its `game (` line, as GitHub counts lines):
+/// `line \t name` per game, the name as the DAT and the lists have it
+fn save_lines(dir: &Path, list: List, dat: &str) -> Result<()> {
+    let mut text = String::new();
+    let mut start = None;
+    for (number, line) in dat.lines().enumerate() {
+        let line = line.strip_suffix('\r').unwrap_or(line);
+        if line == "game (" {
+            start = Some(number + 1);
+        } else if let Some(at) = start
+            && let Some(rest) = line.strip_prefix("\tname \"")
+        {
+            start = None;
+            if let Some((name, _)) = quoted(rest)
+                && !name.contains('\t')
+            {
+                text.push_str(&format!("{at}\t{name}\n"));
+            }
+        }
+    }
+
+    let folder = dir.join(list.source());
+    fs::create_dir_all(&folder)?;
+    let mut file = tempfile::NamedTempFile::new_in(&folder)?;
+    file.write_all(text.as_bytes())?;
+    file.persist(dir.join(list.lines_path()))?;
+    Ok(())
+}
+
+/// The line of game `name` in the DAT of `list`, as the last download had it
+pub(super) fn line_of(dir: &Path, list: List, name: &str) -> Option<usize> {
+    let text = fs::read_to_string(dir.join(list.lines_path())).ok()?;
+    text.lines().find_map(|line| {
+        let (number, game) = line.split_once('\t')?;
+        (game == name).then(|| number.parse().ok()).flatten()
+    })
 }
 
 /// A list's text as `scripts/update-databases.py` writes it
@@ -367,6 +414,28 @@ mod tests {
         assert_eq!(found.release, "Zeta Test \\\"Quest\\\" (USA)");
         assert!(databases.get(List::Nes).dumps.len() > 1000);
 
+        // the line of each game in the DAT, for the link to its entry
+        assert_eq!(
+            line_of(dir.path(), List::GameBoyAdvance, "Alpha Test (Europe)"),
+            Some(12)
+        );
+        assert_eq!(
+            line_of(
+                dir.path(),
+                List::GameBoyAdvance,
+                "Zeta Test \\\"Quest\\\" (USA)"
+            ),
+            Some(6)
+        );
+        assert_eq!(
+            line_of(dir.path(), List::GameBoyAdvance, "Missing (USA)"),
+            None
+        );
+        assert_eq!(
+            line_of(dir.path(), List::GameBoy, "Alpha Test (Europe)"),
+            None
+        );
+
         // within a day nothing is asked
         asked.borrow_mut().clear();
         update_lists(dir.path(), 1_000_000 + 3600, fetch).unwrap();
@@ -381,6 +450,16 @@ mod tests {
         })
         .unwrap();
         assert!(updated.is_empty());
+
+        // without its lines (noted only since the link came) the DAT is downloaded again
+        fs::remove_file(dir.path().join("no-intro/gba-lines.tsv")).unwrap();
+        update_lists(dir.path(), 1_000_000 + 2 * CHECK_EVERY, |url, etag| {
+            if url.contains("Advance") {
+                assert_eq!(etag, None);
+            }
+            Ok(None)
+        })
+        .unwrap();
     }
 
     #[test]
@@ -419,6 +498,7 @@ mod tests {
         });
         assert!(result.is_err());
         assert!(!dir.path().join("no-intro/gba.tsv").exists());
+        assert!(!dir.path().join("no-intro/gba-lines.tsv").exists());
 
         // a downloaded list older than the shipped one (after an update of the app) isn't used
         fs::create_dir_all(dir.path().join("no-intro")).unwrap();
