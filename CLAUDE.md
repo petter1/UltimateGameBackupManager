@@ -42,7 +42,7 @@ every branch starts from the latest state:
 
 Handover between sessions; the session that changes the state updates this section. New sessions
 start from `main` and only see what is there, so the update goes to `main` in its own small
-`docs/` pull request (merged right away), not only in the feature branch. As of 2026-11-12:
+`docs/` pull request (merged right away), not only in the feature branch. As of 2026-11-13 (afternoon):
 
 - **CI runs again** (2026-11-10 morning, all three systems; the macOS runners were missing on
   2026-11-09 evening). Merged 2026-11-10: #45 and #47 (documentation, the comparison with
@@ -51,33 +51,23 @@ start from `main` and only see what is there, so the update goes to `main` in it
   the Mac on disk images, item 5 in "Waiting for the Mac" for WiiGames with real discs).
 - **Merged 2026-10-31 after review**: #20, #24, #7 (the long sleep test is still due), #35, #38,
   #40.
-- **M2, game databases** (the next milestone; built and tested in the cloud): first pull request
-  **#48** (`claude/nifty-hamilton-g6dclr`), open as a draft, CI green on all three systems.
-  **Merged only after Claude tried it on the Mac** (the maintainer's decision, 2026-11-10; item
-  8 in "Waiting for the Mac": a scan of the real collection, no real ROMs in cloud
-  containers). The
-  No-Intro lists of GB, GBC, GBA, NES, SNES and Mega Drive from libretro-database, compacted to
-  `CRC32 \t SHA-1 \t serial \t name` in `assets/databases/no-intro/` (1.9 MB, CC BY-SA 4.0;
-  `scripts/update-databases.py` refreshes them; raw.githubusercontent.com is reachable from cloud
-  containers, github.com and codeload aren't), built in with `include_str!`; `src/romdb.rs`
-  identifies by SHA-1, CRC32, then serial. Checksums per ROM file in `library-checksums.json`
-  next to `library.json` (found again by path + size + mtime, renamed or moved files by size +
-  mtime); a zip with one ROM is that ROM; the same ROM data is one entry with copies.
-  **On top of it: #53** (`claude/kind-cori-0fsoio`, base #48's branch, draft): the app refreshes
-  the lists at run time, once a day by ETag from raw.githubusercontent.com, compacted in Rust like
-  the script (`src/romdb/update.rs`; the ignored test `compacts_the_real_dats` compares both on
-  the real DATs), kept in `databases/no-intro/` in the data folder when newer than the shipped
-  list; tested live from the container. Waits for the Mac like #48 (item 8 covers both);
-  merge #48 first, then retarget #53 to `main`.
-  **On top of that: #56** (`claude/quick-help-dhxs0v`, base #53's branch, draft, 2026-11-12):
-  the Redump lists of Wii and GameCube from libretro-database in `assets/databases/redump/`
-  (650 KB), shipped and refreshed like No-Intro; downloaded lists now in `databases/<source>/`,
-  the state in `databases/state.json`. The library names a disc by its game ID (the code is in
-  the Redump serial, `RVL-RMGP-EUR`) without reading it (`romdb::disc_name`), the hash task names
-  the release (`romdb::disc_by_sha1`). Waits for the Mac with #48 and #53 (item 8); merge after
-  #53, retargeted to `main`. The stray branch `claude/m2-redump-names` (same commit, pushed by
-  mistake) is for the maintainer to delete. Next for M2: GameTDB, the build refreshing the
-  snapshot, the link to the release's entry, the other platforms, RAR via 7-Zip, artwork.
+- **M2, game databases: first part merged 2026-11-13** after a scan of the real collection on
+  the maintainer's Linux computer (gamestation is HFS+, mounted read-only there; the maintainer
+  agreed that this counts in place of the Mac; test log entries of 2026-11-12/13): #48 (No-Intro
+  lists of GB, GBC, GBA, NES, SNES, Mega Drive in `assets/databases/no-intro/`, `src/romdb.rs`
+  identifies by SHA-1, CRC32, serial; checksums per file in `library-checksums.json`), #53 (the
+  app refreshes the lists once a day by ETag, `src/romdb/update.rs`), #56 (Redump lists of Wii
+  and GameCube in `assets/databases/redump/`, discs named by game ID; fixed before merging: no
+  Redump name when GameTDB names the whole game ID differently, since hacks keep another game's
+  code), #59 (a zip named like a ROM is read as the ROM in it), #58 (discs without a Redump name
+  take GameTDB's name from `twbm_idmap`; items that are only a title ID take a folder's name
+  above them), #62 (RAR and 7z through an external 7-Zip, `src/library/sevenzip.rs`: a RAR/7z
+  with one ROM is that ROM; a bare title ID takes the name from a `meta.xml` in a Loadiine
+  archive nearby; what an archive holds is kept in `library-archives.json`). The name shown:
+  Redump, then GameTDB, then the disc's or file's. On the real collection 1 bare title ID is
+  left (an NUS inject: encrypted, no readable name). Next for M2: GameTDB for 3DS and Wii U
+  titles, the link to the release's entry, the build refreshing the snapshot, the other
+  platforms, `unar`/`lsar` when 7-Zip is missing, artwork.
 - **M1, install on the 3DS**: pull request **#11** (`claude/m1-3ds-install-and-consoles`), open,
   waiting for the Mac (item 6 in "Waiting for the Mac" on its branch): install a CIA as a task
   (no Pause: vcinject Link waits without a timeout), start and delete titles, "Update" vcinject
@@ -101,9 +91,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
   over 4 GiB), answering `ugbm?`, `commands` in info. Needs devkitPro (not in cloud containers)
   and the decision where Link is developed from now on ("Open questions" in the roadmap).
 - **Next on the Mac, in this order**: #13, #22, #11 and then #49 (3DS), #41 on WiiGames with
-  real discs (optional), the long sleep test for #7, item 3 of "Waiting for the Mac", #48 and
-  #53 and #56 (item 8; one build of #56's branch tests all three). Each one
+  real discs (optional), the long sleep test for #7, item 3 of "Waiting for the Mac". Each one
   that works is merged by Claude after a quick review, without asking (see "Merging" below).
+  The branches of #11, #13, #22 and #49 have `main` of 2026-11-13 (with M2) merged in.
 - **M2b** (#26): "Hash mismatch" explains a missing update partition (#38), both discs hashed
   (#46); nod's H0–H3 validation fails on WBFS as it is (see the roadmap).
 - **Trying the app in its window on the Mac**: a debug build copied under a name with
@@ -111,14 +101,19 @@ start from `main` and only see what is there, so the update goes to `main` in it
   `config.json` there with a disk image as `mount_point` and a folder of fake discs as the only
   ROM source leaves the real library alone. Clicks and screenshots from a small Swift tool
   (`CGEvent`, `CGWindowListCopyWindowInfo`, `screencapture -l`); iced has no accessibility tree.
-- **Next in the cloud** (no Mac needed), in this order, on a branch from #56's branch while #48,
-  #53 and #56 wait for the Mac: GameTDB for names of 3DS and Wii U titles (the ~700 entries that
-  are only a title ID; Wii/GameCube discs have Redump names since #56), the link to the release's
-  entry in libretro-database. RAR via 7-Zip and artwork come later in M2. Anything on the 3DS
-  side (vcinject Link 14) waits for the maintainer's decision.
-- **Branches**: the merged ones were deleted on GitHub 2026-11-10; only `main` and the branches
-  of the open pull requests (#11, #13, #22, #48, #49, #53, #56) are left. A docs branch a session
-  merges is deleted by the maintainer afterwards. The local `feature/task-manager` on the Mac
+  The same works on the maintainer's Linux computer (Arch, Rust installed): with the drives
+  plugged in there (`/run/media/<user>/gamestation`, `…/WIIGAMES`), a portable build's
+  `library.json` and `library-checksums.json` show what the scan found, without clicking;
+  `unshare -rn` starts it without a network.
+- **Next in the cloud** (no Mac needed), in this order, on a branch from `main`: GameTDB for
+  names of 3DS and Wii U titles (CIAs have their names from the SMDH already; Wii U titles and
+  injects by title ID), the link to the release's entry in libretro-database. Artwork comes
+  later in M2. Anything on the 3DS side (vcinject Link 14) waits for the
+  maintainer's decision.
+- **Branches**: GitHub deletes a pull request's branch when it is merged (seen 2026-11-13).
+  Left besides `main`: the branches of the open pull requests (#11, #13, #22, #49). A session on
+  the maintainer's Linux computer can delete a remote branch (`git push origin --delete`) when
+  the maintainer asks for it. The local `feature/task-manager` on the Mac
   goes once #11 is merged. A clone in a cloud session is shallow (50 commits): `git fetch
   --unshallow origin` before comparing old branches with `main`.
 - A ROM source or drive that doesn't answer no longer holds up the library scan (#31) or the
@@ -152,7 +147,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
   2026-11-10, both `main`s and every branch): in the roadmap, marked "From vcinject" in M1, M2,
   M2b, M4, M5, M5b, M6 and M9. New in the plan since then: the first install of vcinject Link
   by QR code (M1).
-- Branches, commits, pull requests: [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md). Checks before
+- Branches, commits, pull requests: [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md). The repository
+  is a fork of mq1/TinyWiiBackupManager: `gh` without `--repo petter1/UltimateGameBackupManager`
+  may act on the upstream (a pull request landed there by mistake on 2026-11-13, closed). Checks before
   pushing, as CI runs them: `cargo fmt --check`, `cargo clippy --all-targets --locked -- -D
   warnings`, `cargo test --locked` (needs Rust 1.98 or newer: `rustup toolchain install stable`).
 - AI rules: [AI_POLICY.md](AI_POLICY.md).
