@@ -51,9 +51,27 @@ SHA-1.
 The Redump DATs in `assets/` (from redump.org) are the list of known good dumps the hash task
 checks against; a SHA-1 in either list counts as known.
 
+## gametdb/
+
+[GameTDB](https://www.gametdb.com)'s list of Wii U titles (`wiiutdb.txt`, English names), as it
+is: one line per title with
+
+    ID = name
+
+The first line (`TITLES = …`) names the list and its version. An ID is a title's product code
+(`AF6P`, the code in `WUP-P-AF6P`) or the code and the maker (`AF6P52`). The app names a Wii U
+title whose folder or file is called by its product code; vWii titles and forwarders carry a Wii
+or GameCube game's code (`WUP-N-RMCP`), which the Redump lists name. The app doesn't refresh this
+list itself yet; the script does.
+
+| File | List |
+| --- | --- |
+| `wiiu.txt` | Wii U titles |
+
 ## License
 
 libretro-database is licensed under
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); the files in `no-intro/` and `redump/`
 are an adaptation of it (compacted, nothing added) under the same license. Data: No-Intro and
-Redump, via libretro-database and its contributors.
+Redump, via libretro-database and its contributors. `gametdb/` holds GameTDB's data (www.gametdb.com),
+which the Wii and GameCube names (`twbm_idmap`) already come from.

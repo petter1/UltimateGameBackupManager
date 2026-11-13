@@ -70,6 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   name from the `meta.xml` in the pack's Loadiine archive next to it ("PocketNES: Roms S Pack 1").
   What an archive holds is remembered (`library-archives.json`), so it is only opened again when
   it changed. Without 7-Zip, nothing changes.
+- 🏷️ Wii U titles named by their product code ("WUP-P-AF6P") get the game's name from GameTDB
+  ("Fast & Furious: Showdown"), keeping what follows the code ("Minecraft: Wii U Edition
+  (v400)", "… (DLC)"), so a game, its update and its DLC stay apart. vWii titles and forwarders
+  of Wii and GameCube games ("WUP-N-RMCP") get the Redump name of that game.
 
 ## [v6.1.9] - 2026-10-21
 
