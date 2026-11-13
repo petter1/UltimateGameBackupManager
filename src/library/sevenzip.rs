@@ -243,8 +243,13 @@ mod tests {
         let src = dir.path().join("src");
         fs::create_dir_all(src.join("title/meta")).unwrap();
         fs::write(src.join("title/meta/meta.xml"), b"<menu/>").unwrap();
-        // a name 7-Zip would take as a wildcard
-        fs::write(src.join("[weird]*.gba"), b"ROM").unwrap();
+        // a name 7-Zip would take as a wildcard (Windows allows no * in names)
+        let weird = if cfg!(windows) {
+            "[weird].gba"
+        } else {
+            "[weird]*.gba"
+        };
+        fs::write(src.join(weird), b"ROM").unwrap();
         let archive = dir.path().join("test.7z");
         let packed = Command::new(program)
             .current_dir(&src)
@@ -263,7 +268,7 @@ mod tests {
             .map(Entry::slash_path)
             .collect();
         assert!(files.contains(&"title/meta/meta.xml".to_string()));
-        assert!(files.contains(&"[weird]*.gba".to_string()));
+        assert!(files.contains(&weird.to_string()));
 
         let rom = entries.iter().find(|e| e.path.ends_with(".gba")).unwrap();
         assert_eq!(read(&archive, &[&rom.path], 100).unwrap(), b"ROM");
