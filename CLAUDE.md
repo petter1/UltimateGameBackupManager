@@ -42,8 +42,13 @@ every branch starts from the latest state:
 
 Handover between sessions; the session that changes the state updates this section. New sessions
 start from `main` and only see what is there, so the update goes to `main` in its own small
-`docs/` pull request (merged right away), not only in the feature branch. As of 2026-11-13 (afternoon):
+`docs/` pull request (merged right away), not only in the feature branch. As of 2026-11-13 (evening):
 
+- **No GitHub Actions minutes left** (2026-11-13 evening, the maintainer): CI doesn't run until
+  the minutes come back. Until then the checks of "Where things are" run locally (on the
+  maintainer's Linux computer or the Mac) before a merge, and the pull request says so; a macOS
+  check needs the Mac. Documentation-only pull requests are merged without CI (the maintainer,
+  2026-11-13); code waits for the local checks and, where the roadmap says so, the Mac.
 - **CI runs again** (2026-11-10 morning, all three systems; the macOS runners were missing on
   2026-11-09 evening). Merged 2026-11-10: #45 and #47 (documentation, the comparison with
   vcinject in the roadmap), #46 (both discs of a two-disc GameCube game hashed), #36 (a game
@@ -69,9 +74,14 @@ start from `main` and only see what is there, so the update goes to `main` in it
   of their Wii/GameCube game). The name shown:
   Redump, then GameTDB, then the disc's or file's. On the real collection 1 bare title ID is
   left (an NUS inject: encrypted, no readable name), of 110 product codes 1 (`WUP-P-HITS`, not
-  in GameTDB). Next for M2: the link to the release's entry, the app refreshing GameTDB's list
-  (only the script does), the build refreshing the snapshot, the other platforms, `unar`/`lsar`
-  when 7-Zip is missing, artwork. 3DS needs no GameTDB yet: CIAs have SMDH names, and cartridge
+  in GameTDB). **Open, waiting for the Mac**: #66 (`claude/m2-release-link`: a known ROM links
+  to its release in libretro-database's DAT on GitHub, at its line, which the daily check notes
+  in `databases/<source>/<list>-lines.tsv`; item 9 in "Waiting for the Mac" on its branch; its
+  macOS CI job found no runner on 2026-11-13, the maintainer wants the Mac test before merging)
+  and on top of it the draft #67 (`claude/m2-gametdb-refresh`: the daily check refreshes
+  GameTDB's Wii U list, kept only when its titles changed; retarget to `main` after #66). Next
+  for M2: the build refreshing the snapshot, the other platforms, `unar`/`lsar` when 7-Zip is
+  missing, artwork. 3DS needs no GameTDB yet: CIAs have SMDH names, and cartridge
   dumps (`.3ds`) aren't read and aren't in the collection.
 - **M1, install on the 3DS**: pull request **#11** (`claude/m1-3ds-install-and-consoles`), open,
   waiting for the Mac (item 6 in "Waiting for the Mac" on its branch): install a CIA as a task
@@ -95,7 +105,7 @@ start from `main` and only see what is there, so the update goes to `main` in it
   the main loop during installs (Pause would work again), the stream install command 19 (CIAs
   over 4 GiB), answering `ugbm?`, `commands` in info. Needs devkitPro (not in cloud containers)
   and the decision where Link is developed from now on ("Open questions" in the roadmap).
-- **Next on the Mac, in this order**: #13, #22, #11 and then #49 (3DS), #41 on WiiGames with
+- **Next on the Mac, in this order**: #13, #22, #66 (then #67), #11 and then #49 (3DS), #41 on WiiGames with
   real discs (optional), the long sleep test for #7, item 3 of "Waiting for the Mac". Each one
   that works is merged by Claude after a quick review, without asking (see "Merging" below).
   The branches of #11, #13, #22 and #49 have `main` of 2026-11-13 (with M2) merged in.
@@ -110,9 +120,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
   plugged in there (`/run/media/<user>/gamestation`, `…/WIIGAMES`), a portable build's
   `library.json` and `library-checksums.json` show what the scan found, without clicking;
   `unshare -rn` starts it without a network.
-- **Next in the cloud** (no Mac needed), in this order, on a branch from `main`: the link to the
-  release's entry in libretro-database (game info), the app refreshing GameTDB's Wii U list like
-  the libretro lists (`src/romdb/update.rs`). Artwork comes later in M2. Anything on the 3DS side (vcinject Link 14) waits for the
+- **Next in the cloud** (no Mac needed): artwork in M2 (libretro thumbnails by the release
+  name, see the roadmap), on a branch from `main`; code in `src/romdb/update.rs` goes on top of
+  #67 while #66 and #67 are open. Anything on the 3DS side (vcinject Link 14) waits for the
   maintainer's decision.
 - **Branches**: GitHub deletes a pull request's branch when it is merged (seen 2026-11-13).
   Left besides `main`: the branches of the open pull requests (#11, #13, #22, #49). A session on
