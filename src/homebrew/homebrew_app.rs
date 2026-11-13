@@ -9,9 +9,7 @@ use crate::{
 use anyhow::{Context, Result, bail};
 use arrayvec::ArrayString;
 use iced::widget::image;
-use size::Size;
 use smol::fs;
-use std::fmt::Write;
 use std::{
     ffi::{OsStr, OsString},
     path::Path,
@@ -62,8 +60,7 @@ impl HomebrewApp {
 
         let size = get_dir_size(&path).await;
 
-        let mut size_str = ArrayString::new();
-        let _ = write!(&mut size_str, "{}", Size::from_bytes(size));
+        let size_str = crate::util::size::size_str(size);
 
         let icon_path = path.join("icon.png");
         let icon = fs::read(icon_path)

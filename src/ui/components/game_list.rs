@@ -17,7 +17,10 @@ use iced::{
 };
 use iced_palace::widget::ellipsized_text;
 use itertools::Itertools;
-use lucide_icons::{Icon, iced::icon_tag};
+use lucide_icons::{
+    Icon,
+    iced::{icon_hard_drive, icon_tag},
+};
 use std::borrow::Cow;
 
 /// The cards side by side, wrapping
@@ -84,13 +87,17 @@ pub fn card<'a>(
 
     my_card(
         column![
-            row![
-                icon_tag(),
-                text(entry.id),
-                space::horizontal(),
-                text(entry.size)
+            // two lines, always: the ID, then the size
+            column![
+                row![
+                    icon_tag(),
+                    ellipsized_text(entry.id).wrapping(text::Wrapping::None)
+                ]
+                .spacing(5),
+                row![icon_hard_drive(), text(entry.size)].spacing(5),
             ]
-            .spacing(5),
+            .spacing(2)
+            .width(Length::Fill),
             cover,
             ellipsized_text(entry.title).wrapping(text::Wrapping::None),
             Row::with_children(std::iter::once(info.into()).chain(buttons)).spacing(5),

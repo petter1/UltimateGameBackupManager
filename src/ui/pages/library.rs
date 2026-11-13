@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Yanik Fuchs <yanik.fuchs@me.com>
 // SPDX-License-Identifier: GPL-3.0-only
 
+use crate::util::size::size_str;
 use crate::{
     config::{ViewAs, ui::view_as::view_as},
     library::{ItemId, ItemKind, LibraryItem, Platform, RomInfo},
@@ -21,7 +22,6 @@ use iced::{
     widget::{Column, Row, column, row, scrollable, space, text, tooltip},
 };
 use lucide_icons::Icon;
-use size::Size;
 
 pub fn library(state: &AppState) -> Element<'_, Message> {
     let library = &state.library;
@@ -249,7 +249,7 @@ fn show_in_folder(item: &LibraryItem) -> Message {
 fn entry(item: &LibraryItem) -> Entry<'_> {
     Entry {
         id: item_id(item).unwrap_or_default().into(),
-        size: Size::from_bytes(item.size).to_string().into(),
+        size: size_str(item.size).to_string().into(),
         title: item.title(),
         cover: item.icon.as_ref(),
         placeholder: Some(item_icon(item)),

@@ -83,6 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🗂️ The library looks like the list of games on the drive: cards with the cover, ID, size and
   buttons, or a table, switched with the same buttons, and an "Info" window like the game info,
   with the cover larger, what the game database says, the checksums and the release's link.
+- 📏 Sizes in the lists always have one decimal ("688.1 MiB", "1.4 GiB"), and a card shows the
+  ID and the size on two lines, so all cards are the same height.
 
 ## [v6.1.9] - 2026-10-21
 

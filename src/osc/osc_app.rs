@@ -6,7 +6,6 @@ use anyhow::Result;
 use arrayvec::ArrayString;
 use iced::widget::image;
 use serde::Deserialize;
-use size::Size;
 use std::{fmt::Write, path::Path};
 use time::OffsetDateTime;
 
@@ -56,12 +55,7 @@ impl<'de> serde::Deserialize<'de> for OscApp {
     {
         let meta = OscAppMeta::deserialize(deserializer)?;
 
-        let mut uncompressed_size_str = ArrayString::new();
-        let _ = write!(
-            &mut uncompressed_size_str,
-            "{}",
-            Size::from_bytes(meta.uncompressed_size)
-        );
+        let uncompressed_size_str = crate::util::size::size_str(meta.uncompressed_size);
 
         let search_term_lowercase = format!("{}\0{}", meta.name, meta.slug)
             .to_lowercase()

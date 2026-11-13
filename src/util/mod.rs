@@ -8,5 +8,6 @@ pub mod http;
 pub mod keep_awake;
 pub mod misc;
 pub mod sha1_list;
+pub mod size;
 pub mod updates;
 pub mod wiiload;

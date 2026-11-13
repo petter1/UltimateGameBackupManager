@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Yanik Fuchs <yanik.fuchs@me.com>
 // SPDX-License-Identifier: GPL-3.0-only
 
+use crate::util::size::size_str;
 use crate::{
     library::LibraryItem,
     message::Message,
@@ -25,7 +26,6 @@ use lucide_icons::{
         icon_search_check, icon_tag,
     },
 };
-use size::Size;
 
 /// The info of a library item, like the game info of a game on the drive
 pub fn library_info<'a>(item: &'a LibraryItem, state: &'a AppState) -> Element<'a, Message> {
@@ -38,7 +38,7 @@ pub fn library_info<'a>(item: &'a LibraryItem, state: &'a AppState) -> Element<'
             text!("Kind: {}", kind_label(item.kind))
         ]
         .spacing(5),
-        row![icon_ruler(), text!("Size: {}", Size::from_bytes(item.size))].spacing(5),
+        row![icon_ruler(), text!("Size: {}", size_str(item.size))].spacing(5),
     ]
     .spacing(5);
     if let Some(id) = item_id(item) {
