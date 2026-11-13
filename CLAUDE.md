@@ -42,7 +42,7 @@ every branch starts from the latest state:
 
 Handover between sessions; the session that changes the state updates this section. New sessions
 start from `main` and only see what is there, so the update goes to `main` in its own small
-`docs/` pull request (merged right away), not only in the feature branch. As of 2026-11-13:
+`docs/` pull request (merged right away), not only in the feature branch. As of 2026-11-13 (afternoon):
 
 - **CI runs again** (2026-11-10 morning, all three systems; the macOS runners were missing on
   2026-11-09 evening). Merged 2026-11-10: #45 and #47 (documentation, the comparison with
@@ -61,11 +61,13 @@ start from `main` and only see what is there, so the update goes to `main` in it
   Redump name when GameTDB names the whole game ID differently, since hacks keep another game's
   code), #59 (a zip named like a ROM is read as the ROM in it), #58 (discs without a Redump name
   take GameTDB's name from `twbm_idmap`; items that are only a title ID take a folder's name
-  above them). The name shown: Redump, then GameTDB, then the disc's or file's. On the real
-  collection 43 bare title IDs are left (packs, injects straight in a platform's folder): their
-  names are only inside the RARs. Next for M2: GameTDB for 3DS and Wii U titles, the link to the
-  release's entry, the build refreshing the snapshot, the other platforms, RAR via 7-Zip (also
-  `.7z`), artwork.
+  above them), #62 (RAR and 7z through an external 7-Zip, `src/library/sevenzip.rs`: a RAR/7z
+  with one ROM is that ROM; a bare title ID takes the name from a `meta.xml` in a Loadiine
+  archive nearby; what an archive holds is kept in `library-archives.json`). The name shown:
+  Redump, then GameTDB, then the disc's or file's. On the real collection 1 bare title ID is
+  left (an NUS inject: encrypted, no readable name). Next for M2: GameTDB for 3DS and Wii U
+  titles, the link to the release's entry, the build refreshing the snapshot, the other
+  platforms, `unar`/`lsar` when 7-Zip is missing, artwork.
 - **M1, install on the 3DS**: pull request **#11** (`claude/m1-3ds-install-and-consoles`), open,
   waiting for the Mac (item 6 in "Waiting for the Mac" on its branch): install a CIA as a task
   (no Pause: vcinject Link waits without a timeout), start and delete titles, "Update" vcinject
@@ -105,8 +107,8 @@ start from `main` and only see what is there, so the update goes to `main` in it
   `unshare -rn` starts it without a network.
 - **Next in the cloud** (no Mac needed), in this order, on a branch from `main`: GameTDB for
   names of 3DS and Wii U titles (CIAs have their names from the SMDH already; Wii U titles and
-  injects by title ID), the link to the release's entry in libretro-database. RAR via 7-Zip and
-  artwork come later in M2. Anything on the 3DS side (vcinject Link 14) waits for the
+  injects by title ID), the link to the release's entry in libretro-database. Artwork comes
+  later in M2. Anything on the 3DS side (vcinject Link 14) waits for the
   maintainer's decision.
 - **Branches**: GitHub deletes a pull request's branch when it is merged (seen 2026-11-13).
   Left besides `main`: the branches of the open pull requests (#11, #13, #22, #49). A session on
@@ -145,7 +147,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
   2026-11-10, both `main`s and every branch): in the roadmap, marked "From vcinject" in M1, M2,
   M2b, M4, M5, M5b, M6 and M9. New in the plan since then: the first install of vcinject Link
   by QR code (M1).
-- Branches, commits, pull requests: [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md). Checks before
+- Branches, commits, pull requests: [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md). The repository
+  is a fork of mq1/TinyWiiBackupManager: `gh` without `--repo petter1/UltimateGameBackupManager`
+  may act on the upstream (a pull request landed there by mistake on 2026-11-13, closed). Checks before
   pushing, as CI runs them: `cargo fmt --check`, `cargo clippy --all-targets --locked -- -D
   warnings`, `cargo test --locked` (needs Rust 1.98 or newer: `rustup toolchain install stable`).
 - AI rules: [AI_POLICY.md](AI_POLICY.md).
