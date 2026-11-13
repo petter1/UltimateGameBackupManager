@@ -307,6 +307,17 @@ named, the one left an NUS inject straight in `NDS/`; the two `.7z` GBA hacks re
 archives opened. Still open: `unar`/`lsar` when 7-Zip is missing, unpacking a RAR release for
 copying or installing, checksums from the RAR headers for discs in RARs (none in the collection).
 
+**Sixth pull request** (2026-11-13, branch `claude/m2-gametdb-wiiu`): GameTDB's list of Wii U
+titles (`assets/databases/gametdb/wiiu.txt`, 83 KB, kept as GameTDB has it; refreshed by
+`scripts/update-databases.py`, not yet by the app at run time). A Wii U release folder, RAR or
+title folder named by its product code (`WUP-P-AF6P`) takes GameTDB's name for the code, with what
+follows the code in brackets (`(v400)`, `(DLC)`); a vWii title or forwarder (`WUP-N-RMCP`,
+`WUP-N-GALP`) takes the Redump name of the Wii, else GameCube, game with that code. On the real
+collection: 109 of 110 named, `WUP-P-HITS` isn't in GameTDB. 3DS: the CIAs have their names from
+the SMDH, and there are no cartridge dumps in the collection, so GameTDB's 3DS list waits until
+cartridge dumps (`.3ds`, `.cci`) are read. Still open: the app refreshing GameTDB's list, the
+link to the release's entry, artwork, descriptions.
+
 ### M2b · Explain and repair bad dumps (M) – after M2
 
 Today the game info's "SHA1" button only says "Hash mismatch" (a dump's SHA-1 against the Redump
