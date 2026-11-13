@@ -63,11 +63,16 @@ start from `main` and only see what is there, so the update goes to `main` in it
   take GameTDB's name from `twbm_idmap`; items that are only a title ID take a folder's name
   above them), #62 (RAR and 7z through an external 7-Zip, `src/library/sevenzip.rs`: a RAR/7z
   with one ROM is that ROM; a bare title ID takes the name from a `meta.xml` in a Loadiine
-  archive nearby; what an archive holds is kept in `library-archives.json`). The name shown:
+  archive nearby; what an archive holds is kept in `library-archives.json`), #64 (Wii U titles
+  named by product code, `WUP-P-AF6P`, take GameTDB's name from
+  `assets/databases/gametdb/wiiu.txt`, with `(v400)`/`(DLC)` kept; vWii titles the Redump name
+  of their Wii/GameCube game). The name shown:
   Redump, then GameTDB, then the disc's or file's. On the real collection 1 bare title ID is
-  left (an NUS inject: encrypted, no readable name). Next for M2: GameTDB for 3DS and Wii U
-  titles, the link to the release's entry, the build refreshing the snapshot, the other
-  platforms, `unar`/`lsar` when 7-Zip is missing, artwork.
+  left (an NUS inject: encrypted, no readable name), of 110 product codes 1 (`WUP-P-HITS`, not
+  in GameTDB). Next for M2: the link to the release's entry, the app refreshing GameTDB's list
+  (only the script does), the build refreshing the snapshot, the other platforms, `unar`/`lsar`
+  when 7-Zip is missing, artwork. 3DS needs no GameTDB yet: CIAs have SMDH names, and cartridge
+  dumps (`.3ds`) aren't read and aren't in the collection.
 - **M1, install on the 3DS**: pull request **#11** (`claude/m1-3ds-install-and-consoles`), open,
   waiting for the Mac (item 6 in "Waiting for the Mac" on its branch): install a CIA as a task
   (no Pause: vcinject Link waits without a timeout), start and delete titles, "Update" vcinject
@@ -105,10 +110,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
   plugged in there (`/run/media/<user>/gamestation`, `…/WIIGAMES`), a portable build's
   `library.json` and `library-checksums.json` show what the scan found, without clicking;
   `unshare -rn` starts it without a network.
-- **Next in the cloud** (no Mac needed), in this order, on a branch from `main`: GameTDB for
-  names of 3DS and Wii U titles (CIAs have their names from the SMDH already; Wii U titles and
-  injects by title ID), the link to the release's entry in libretro-database. Artwork comes
-  later in M2. Anything on the 3DS side (vcinject Link 14) waits for the
+- **Next in the cloud** (no Mac needed), in this order, on a branch from `main`: the link to the
+  release's entry in libretro-database (game info), the app refreshing GameTDB's Wii U list like
+  the libretro lists (`src/romdb/update.rs`). Artwork comes later in M2. Anything on the 3DS side (vcinject Link 14) waits for the
   maintainer's decision.
 - **Branches**: GitHub deletes a pull request's branch when it is merged (seen 2026-11-13).
   Left besides `main`: the branches of the open pull requests (#11, #13, #22, #49). A session on
