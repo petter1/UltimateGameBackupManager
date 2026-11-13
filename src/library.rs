@@ -359,6 +359,36 @@ fn display_name_of_folder(path: &Path) -> String {
     }
 }
 
+/// The product code in a Wii U title's name: "AF6P" in "WUP-P-AF6P", "WUP-P-AUME v400" and
+/// "WUP-N-RMCP 00050002524D4350" (also with `_`); none in other names
+fn product_code(name: &str) -> Option<&str> {
+    let name = name.trim();
+    let bytes = name.as_bytes();
+    let sep = |i: usize| matches!(bytes.get(i), Some(b'-' | b'_' | b' '));
+    let ok = bytes.len() >= 10
+        && bytes[..3].eq_ignore_ascii_case(b"WUP")
+        && sep(3)
+        && bytes[4].is_ascii_alphabetic()
+        && sep(5)
+        && bytes[6..10].iter().all(u8::is_ascii_alphanumeric)
+        && !bytes.get(10).is_some_and(u8::is_ascii_alphanumeric);
+    ok.then(|| &name[6..10])
+}
+
+/// The name of a Wii U title that is named by its product code, from the game databases, with
+/// what follows the code ("WUP-P-AUME v400" is "Minecraft: Wii U Edition (v400)", so that the
+/// game, its update and its DLC stay apart); a vWii title's title ID after the code is left out
+fn name_of_product(name: &str) -> Option<String> {
+    let name = name.trim();
+    let game = romdb::product_name(&product_code(name)?.to_ascii_uppercase())?;
+    let rest = name[10..].trim_matches(|c: char| c.is_whitespace() || c == '-' || c == '_');
+    Some(if rest.is_empty() || is_title_id_name(rest) {
+        game
+    } else {
+        format!("{game} ({rest})")
+    })
+}
+
 /// Whether a name is a bare title ID (16 hex digits), maybe with an extension or RAR part
 fn is_title_id_name(name: &str) -> bool {
     let stem = name.split('.').next().unwrap_or_default();
@@ -875,6 +905,7 @@ fn read_item(
             .map(|meta| meta.len())
             .sum();
         let name = display_name_of_folder(&path);
+        let name = name_of_product(&name).unwrap_or(name);
         // the title ID is often only in the parts' names, e.g. 0005000010105317.part01.rar
         let id = id_in_name(&name).or_else(|| {
             fs::read_dir(&path)
@@ -938,7 +969,9 @@ fn read_item(
         // the title folder is the game: name and size are the folder's
         let folder = item.path.parent()?.to_path_buf();
         item.name = display_name(&folder);
-        if is_title_id_name(&item.name)
+        if let Some(name) = name_of_product(&item.name) {
+            item.name = name;
+        } else if is_title_id_name(&item.name)
             && let Ok(title_id) = u64::from_str_radix(&item.name, 16)
         {
             item.name = name_from_folders(&folder, title_id)
@@ -1034,6 +1067,9 @@ fn read_item(
                 .name
                 .rsplit_once(".part")
                 .map_or(item.name.clone(), |(name, _)| name.to_string());
+            if let Some(name) = name_of_product(&item.name) {
+                item.name = name;
+            }
             match &item.id {
                 Some(ItemId::Game(id)) => {
                     if let Some(title) = twbm_idmap::get_title(id) {
@@ -1536,6 +1572,50 @@ mod tests {
                 "paper mario usa",
                 "uae wii forwarder",
             ]
+        );
+    }
+
+    #[test]
+    fn product_codes_are_found_in_names() {
+        assert_eq!(product_code("WUP-P-AF6P"), Some("AF6P"));
+        assert_eq!(product_code("WUP-P-AUME v400"), Some("AUME"));
+        assert_eq!(product_code("WUP N RMCP 00050002524D4350"), Some("RMCP"));
+        assert_eq!(product_code("wup_p_af6p"), Some("af6p"));
+        assert_eq!(product_code("WUP-P-AF6PX"), None);
+        assert_eq!(
+            product_code("Cars 3 Driven To Win EUR MULTi8 WiiU-PUSSYCAT"),
+            None
+        );
+        assert_eq!(product_code("WUP-é-AF6P"), None);
+    }
+
+    #[test]
+    fn wii_u_titles_named_by_their_product_code_get_the_games_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("Wii U inject");
+        let write = |path: &str| {
+            let path = root.join(path);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(&path, b"1").unwrap();
+        };
+        // a release folder, a RAR among others and a vWii title folder
+        write(
+            "WiiU/WiiU/Fast And Furious Showdown - EU [000500001012DA00]/WUP-P-AF6P/WUP-P-AF6P.rar",
+        );
+        write("WiiU/WiiU eShop/WUP-P-AUME_v400.rar");
+        write("Wii/installed/WUP-N-RMCP_00050002524D4350/title.tmd");
+        // a code no database knows keeps its name
+        write("WiiU/WiiU eShop/WUP-P-ZZZZ.rar");
+
+        let items = scan(std::slice::from_ref(&root));
+        let mut names: Vec<_> = items.iter().map(|item| item.name.as_str()).collect();
+        names.sort_unstable();
+        assert_eq!(names.len(), 4, "{names:?}");
+        assert_eq!(names[0], "Fast & Furious: Showdown");
+        assert!(names[1].starts_with("Mario Kart Wii (Europe"), "{names:?}");
+        assert_eq!(
+            names[2..],
+            ["Minecraft: Wii U Edition (v400)", "WUP-P-ZZZZ"]
         );
     }
 

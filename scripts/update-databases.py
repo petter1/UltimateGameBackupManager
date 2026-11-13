@@ -11,7 +11,9 @@ what the app needs to identify a dump, one line per dump:
     CRC32 <tab> SHA-1 <tab> serial <tab> release name
 
 The result is a few hundred KB per system instead of the DAT's megabytes, and
-plain text, so an update shows in a diff. Run it from the repository root:
+plain text, so an update shows in a diff. GameTDB's list of Wii U titles
+(https://www.gametdb.com, `ID = name` per line) is small already and kept as it
+is, only with Unix line ends. Run it from the repository root:
 
     python3 scripts/update-databases.py
 """
@@ -36,6 +38,11 @@ SYSTEMS = {
     ("no-intro", "md"): "Sega - Mega Drive - Genesis",
     ("redump", "wii"): "Nintendo - Wii",
     ("redump", "gc"): "Nintendo - GameCube",
+}
+
+# GameTDB's lists: file name in the app -> URL
+GAMETDB = {
+    "wiiu": "https://www.gametdb.com/wiiutdb.txt?LANG=EN",
 }
 
 # how the first line names a source
@@ -84,6 +91,17 @@ def main() -> int:
         out.mkdir(parents=True, exist_ok=True)
         (out / f"{key}.tsv").write_text(header + "\n".join(lines) + "\n", encoding="utf-8")
         print(f"{source}/{key}: {len(lines)} dumps, version {version}")
+
+    for key, url in GAMETDB.items():
+        with urllib.request.urlopen(url, timeout=60) as response:
+            text = response.read().decode("utf-8", "replace")
+        lines = [line.rstrip("\r") for line in text.splitlines() if line.strip()]
+        if not lines or not lines[0].startswith("TITLES = "):
+            raise ValueError(f"unexpected GameTDB list from {url}")
+        out = OUT / "gametdb"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / f"{key}.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        print(f"gametdb/{key}: {len(lines) - 1} titles")
     return 0
 
 
