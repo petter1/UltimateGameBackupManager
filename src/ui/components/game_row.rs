@@ -4,50 +4,37 @@
 use crate::{
     games::game::Game,
     message::Message,
-    ui::components::{my_card::my_card, row_button::row_button},
+    ui::components::{game_card::entry, game_list::table_row, row_button::row_button},
 };
-use iced::{
-    Element, Length, padding,
-    widget::{row, rule, space, text, tooltip},
-};
-use lucide_icons::{
-    Icon,
-    iced::{icon_box, icon_pointer},
-};
+use iced::Element;
+use lucide_icons::Icon;
 
 pub fn game_row(game: &Game) -> Element<'_, Message> {
-    row![
-        tooltip(
-            if game.is_wii() {
-                icon_pointer()
-            } else {
-                icon_box()
-            },
-            my_card(if game.is_wii() { "Wii" } else { "GameCube" }),
-            tooltip::Position::Top
-        ),
-        text!("{} [{}]", game.title(), game.id()),
-        space::horizontal(),
-        text(game.size_str()),
-        rule::vertical(1),
-        row_button(
-            Icon::Trash,
-            "Delete game",
-            Some(|| Message::AskDeleteDir(game.path().to_path_buf()))
-        ),
-        row_button(
-            Icon::HardDriveDownload,
-            "Export game",
-            Some(|| Message::PickExportDest(game.clone()))
-        ),
-        row_button(
-            Icon::Info,
-            "Game info",
-            Some(|| Message::OpenGameInfo(game.clone()))
-        ),
-    ]
-    .spacing(5)
-    .height(Length::Shrink)
-    .padding(padding::all(2).left(5))
-    .into()
+    table_row(
+        if game.is_wii() {
+            Icon::Pointer
+        } else {
+            Icon::Box
+        },
+        if game.is_wii() { "Wii" } else { "GameCube" },
+        entry(game),
+        None,
+        [
+            row_button(
+                Icon::Trash,
+                "Delete game",
+                Some(|| Message::AskDeleteDir(game.path().to_path_buf())),
+            ),
+            row_button(
+                Icon::HardDriveDownload,
+                "Export game",
+                Some(|| Message::PickExportDest(game.clone())),
+            ),
+            row_button(
+                Icon::Info,
+                "Game info",
+                Some(|| Message::OpenGameInfo(game.clone())),
+            ),
+        ],
+    )
 }

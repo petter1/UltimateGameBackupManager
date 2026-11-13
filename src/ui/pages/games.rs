@@ -8,17 +8,18 @@ use crate::{
     state::AppState,
     ui::{
         components::{
-            game_card::game_card, game_row::game_row, games_titlebar::games_titlebar,
-            my_card::my_card,
+            game_card::game_card,
+            game_list::{grid, list_padding, table},
+            game_row::game_row,
+            games_titlebar::games_titlebar,
         },
         pages::{errored::errored, loading::loading, no_drive::no_drive},
     },
 };
 use iced::{
-    Element, Length, padding,
-    widget::{Column, Row, column, container, rule, scrollable},
+    Element, Length,
+    widget::{column, container, scrollable},
 };
-use itertools::Itertools;
 
 pub fn games(state: &AppState) -> Element<'_, Message> {
     if state.config.mount_point().as_os_str().is_empty() {
@@ -30,29 +31,13 @@ pub fn games(state: &AppState) -> Element<'_, Message> {
         GamesState::Errored(e) => errored(e),
         GamesState::Loaded(games) => {
             let content: Element<'_, Message> = match state.config.view_as() {
-                ViewAs::Grid => games
-                    .iter_by(state.config.sort_by())
-                    .map(|game| game_card(game))
-                    .collect::<Row<'_, _>>()
-                    .spacing(10)
-                    .wrap()
-                    .into(),
-
-                ViewAs::Table => my_card(
-                    games
-                        .iter_by(state.config.sort_by())
-                        .map(|game| game_row(game))
-                        .intersperse_with(|| rule::horizontal(1).into())
-                        .collect::<Column<'_, _>>(),
-                )
-                .padding(0)
-                .into(),
+                ViewAs::Grid => grid(games.iter_by(state.config.sort_by()).map(game_card)),
+                ViewAs::Table => table(games.iter_by(state.config.sort_by()).map(game_row)),
             };
 
             column![
                 games_titlebar(games, state),
-                scrollable(container(content).padding(padding::all(10).right(20).top(0)))
-                    .width(Length::Fill),
+                scrollable(container(content).padding(list_padding())).width(Length::Fill),
             ]
             .into()
         }

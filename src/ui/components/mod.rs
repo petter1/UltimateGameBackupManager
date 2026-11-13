@@ -7,6 +7,7 @@ pub mod drive_tabs;
 pub mod dual_toggle;
 pub mod filter_console;
 pub mod game_card;
+pub mod game_list;
 pub mod game_row;
 pub mod game_search;
 pub mod games_titlebar;

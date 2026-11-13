@@ -4,61 +4,36 @@
 use crate::{
     games::game::Game,
     message::Message,
-    ui::components::{my_button::my_button, my_card::my_card},
+    ui::components::game_list::{Entry, card, card_button},
 };
-use iced::{
-    Alignment, Element,
-    widget::{column, image, row, space, text, tooltip},
-};
-use iced_palace::widget::ellipsized_text;
-use lucide_icons::{Icon, iced::icon_tag};
+use iced::Element;
+use lucide_icons::Icon;
+
+pub fn entry(game: &Game) -> Entry<'_> {
+    Entry {
+        id: game.id_str().into(),
+        size: game.size_str().into(),
+        title: game.title(),
+        cover: game.cover(),
+        placeholder: None,
+    }
+}
 
 pub fn game_card(game: &Game) -> Element<'_, Message> {
-    let cover: Element<'_, Message> = match game.cover() {
-        Some(cover) => image(cover).height(96).into(),
-        None => space().height(96).into(),
-    };
-
-    let export_btn = my_button()
-        .icon(Icon::HardDriveDownload)
-        .on_press_with(|| Message::PickExportDest(game.clone()));
-
-    my_card(
-        column![
-            row![
-                icon_tag(),
-                text(game.id_str()),
-                space::horizontal(),
-                text(game.size_str())
-            ]
-            .spacing(5),
-            cover,
-            ellipsized_text(game.title()).wrapping(text::Wrapping::None),
-            row![
-                my_button()
-                    .label("Info")
-                    .icon(Icon::Info)
-                    .on_press_with(|| Message::OpenGameInfo(game.clone()))
-                    .expand_width(),
-                tooltip(
-                    export_btn,
-                    my_card("Export game"),
-                    tooltip::Position::Bottom
-                ),
-                tooltip(
-                    my_button()
-                        .icon(Icon::Trash)
-                        .on_press_with(|| Message::AskDeleteDir(game.path().to_path_buf())),
-                    my_card("Delete game"),
-                    tooltip::Position::Bottom
-                )
-            ]
-            .spacing(5)
-        ]
-        .align_x(Alignment::Center)
-        .padding(5)
-        .spacing(10),
+    card(
+        entry(game),
+        || Message::OpenGameInfo(game.clone()),
+        [
+            card_button(
+                Icon::HardDriveDownload,
+                "Export game",
+                Some(|| Message::PickExportDest(game.clone())),
+            ),
+            card_button(
+                Icon::Trash,
+                "Delete game",
+                Some(|| Message::AskDeleteDir(game.path().to_path_buf())),
+            ),
+        ],
     )
-    .width(169.5)
-    .into()
 }

@@ -349,7 +349,8 @@ already, or "Show in its folder"); as a table, a row per item with the same butt
 table is the drive's setting (`view_as`); the search is the drive's search bar. "Info" opens a
 window like the game info (`src/ui/modals/library_info.rs`): title, path, system, kind, size,
 ID, the database's verdict, CRC32 and SHA-1, copies, where it is, the cover 200 pixels high,
-the release's link and "Copy to drive". Seen on the maintainer's Linux computer with the real
+the release's link and "Copy to drive". The cards, rows, grid and table are one component for both pages
+(`src/ui/components/game_list.rs`); `game_card` and `game_row` of the drive's games use it too. Seen on the maintainer's Linux computer with the real
 collection, both views and the info window; this is the "game info showing them larger" of the
 ninth pull request's open points, for ROMs.
 
