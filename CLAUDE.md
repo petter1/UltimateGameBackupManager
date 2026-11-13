@@ -143,6 +143,10 @@ start from `main` and only see what is there, so the update goes to `main` in it
   Documentation-only: as soon as CI is green. UI code isn't reviewed: if the UI works, it is
   good. Details: [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md#pull-requests).
 
+- **Reuse code, don't write it twice**: when something should look or work like an existing part
+  of the app (e.g. the library like the drive's list of games), extract the existing code into a
+  shared component and use it from both places, right in the first commit; parameterise only what
+  really differs (the maintainer, 2026-11-13; example: `src/ui/components/game_list.rs` in #71).
 - **Recommend a new session proactively** as soon as it makes sense, without being asked: when
   the conversation has grown long, when the next piece of work doesn't need what this session
   knows (a new milestone, an unrelated topic), or when a fresh start is cheaper than carrying the
