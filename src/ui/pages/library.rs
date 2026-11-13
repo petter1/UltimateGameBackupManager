@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use crate::{
+    config::{ViewAs, ui::view_as::view_as},
     library::{ItemId, ItemKind, LibraryItem, Platform, RomInfo},
     message::Message,
     romdb::{self, Match},
@@ -10,15 +11,16 @@ use crate::{
         my_button::{MyButtonKind, my_button},
         my_card::my_card,
         my_group::my_group,
+        row_button::row_button,
+        search_bar::search_bar,
     },
 };
 use iced::{
-    Alignment, Element, Length, Theme, padding,
-    widget::{
-        Column, Row, button, column, container, image, row, scrollable, space, text, text_input,
-        tooltip,
-    },
+    Alignment, Element, Length, padding,
+    widget::{Column, Row, column, container, image, row, rule, scrollable, space, text, tooltip},
 };
+use iced_palace::widget::ellipsized_text;
+use itertools::Itertools;
 use lucide_icons::Icon;
 use size::Size;
 
@@ -26,9 +28,7 @@ pub fn library(state: &AppState) -> Element<'_, Message> {
     let library = &state.library;
 
     let titlebar = row![
-        text_input("Search", &library.search)
-            .on_input(Message::SearchLibrary)
-            .width(200),
+        search_bar(&library.search, Message::SearchLibrary, "Search by title"),
         space::horizontal(),
         library.scanning.then(|| text("Scanning…")),
         library
@@ -42,6 +42,8 @@ pub fn library(state: &AppState) -> Element<'_, Message> {
                 my_card("Copy the Wii and GameCube games shown here that aren't on the drive yet"),
                 tooltip::Position::Bottom
             )),
+        view_as(&state.config).map(Message::Config),
+        space().width(5),
         tooltip(
             my_button::<Message>()
                 .icon(Icon::RefreshCw)
@@ -88,12 +90,24 @@ pub fn library(state: &AppState) -> Element<'_, Message> {
         })
         .into()
     } else {
-        library
-            .visible()
-            .map(|item| item_row(item, state))
-            .collect::<Column<'_, _>>()
-            .spacing(8)
-            .into()
+        match state.config.view_as() {
+            ViewAs::Grid => library
+                .visible()
+                .map(|item| item_card(item, state))
+                .collect::<Row<'_, _>>()
+                .spacing(10)
+                .wrap()
+                .into(),
+            ViewAs::Table => my_card(
+                library
+                    .visible()
+                    .map(|item| item_row(item, state))
+                    .intersperse_with(|| rule::horizontal(1).into())
+                    .collect::<Column<'_, _>>(),
+            )
+            .padding(0)
+            .into(),
+        }
     };
 
     column![
@@ -205,22 +219,27 @@ fn presence(item: &LibraryItem, state: &AppState) -> Vec<String> {
     }
 }
 
-fn item_row<'a>(item: &'a LibraryItem, state: &'a AppState) -> Element<'a, Message> {
-    let icon: Element<'_, Message> = match &item.icon {
-        Some(handle) => image(handle).width(48).height(48).into(),
-        None => container(
-            if item.kind == ItemKind::SdBackup {
-                Icon::MemoryStick
-            } else {
-                placeholder_icon(item.platform)
-            }
-            .widget()
-            .size(28),
-        )
-        .center(48)
-        .into(),
-    };
+/// The game ID, title ID or cartridge serial, shown like a disc's game ID; of a 3DS title ID
+/// only the unique part, the high half is the same for all games
+fn item_id(item: &LibraryItem) -> Option<String> {
+    match &item.id {
+        Some(ItemId::Game(id)) => Some(id.clone()),
+        Some(ItemId::Title(id)) => Some(format!("{:08X}", id & 0xFFFF_FFFF)),
+        None => item.rom.as_ref().and_then(|rom| rom.serial.clone()),
+    }
+}
 
+fn item_icon(item: &LibraryItem) -> Icon {
+    if item.kind == ItemKind::SdBackup {
+        Icon::MemoryStick
+    } else {
+        placeholder_icon(item.platform)
+    }
+}
+
+/// What the item is, for the tooltip: platform, kind, copies, the game database's verdict, and
+/// a ROM's file and checksums
+fn details(item: &LibraryItem) -> String {
     let mut details = vec![item.platform.label().to_string()];
     details.push(
         match item.kind {
@@ -242,52 +261,183 @@ fn item_row<'a>(item: &'a LibraryItem, state: &'a AppState) -> Element<'a, Messa
     if !item.copies.is_empty() {
         details.push(format!("{} copies", item.copies.len() + 1));
     }
+
+    let mut lines = vec![details.join(" · ")];
     if let Some(rom) = &item.rom {
-        details.push(rom_verdict(rom));
+        lines.push(rom_verdict(rom));
+        lines.push(rom_checksums(item, rom));
+    } else {
+        lines.push(item.path.display().to_string());
     }
+    lines.join("\n")
+}
+
+fn details_tooltip<'a>(
+    content: impl Into<Element<'a, Message>>,
+    item: &LibraryItem,
+) -> Element<'a, Message> {
+    tooltip(
+        content,
+        my_card(text(details(item)).size(12)),
+        tooltip::Position::Bottom,
+    )
+    .into()
+}
+
+/// Opens the folder the item is in
+fn show_in_folder(item: &LibraryItem) -> Message {
+    Message::Open(
+        item.path
+            .parent()
+            .unwrap_or(&item.path)
+            .as_os_str()
+            .to_os_string(),
+    )
+}
+
+/// A card like the ones of the games on the drive: ID and size, the cover, the title, buttons
+fn item_card<'a>(item: &'a LibraryItem, state: &'a AppState) -> Element<'a, Message> {
+    let cover: Element<'_, Message> = match &item.icon {
+        Some(handle) => image(handle).width(Length::Fill).height(96).into(),
+        None => container(item_icon(item).widget().size(48))
+            .center_x(Length::Fill)
+            .center_y(96)
+            .into(),
+    };
+
+    let header = row![
+        tooltip(
+            item_icon(item).widget(),
+            my_card(item.platform.label()),
+            tooltip::Position::Top
+        ),
+        ellipsized_text(item_id(item).unwrap_or_else(|| item.platform.label().to_string()))
+            .wrapping(text::Wrapping::None)
+            .size(13)
+            .width(Length::Fill),
+        text(Size::from_bytes(item.size).to_string()).size(13),
+    ]
+    .spacing(5)
+    .align_y(Alignment::Center);
 
     let on = presence(item, state);
-    let status: Element<'_, Message> = if on.is_empty() {
-        if item.is_drive_game() {
-            my_button::<Message>()
-                .icon(Icon::HardDriveUpload)
-                .label("Copy to drive")
-                .on_press(Message::CopyToDrive(item.path.clone()))
-                .into()
-        } else {
-            space().into()
-        }
+    let status: Element<'_, Message> = if !on.is_empty() {
+        tooltip(
+            container(
+                ellipsized_text(format!("✓ {}", on.join(", ")))
+                    .wrapping(text::Wrapping::None)
+                    .size(12),
+            )
+            .center_x(Length::Fill),
+            my_card(text!("On {}", on.join(", "))),
+            tooltip::Position::Bottom,
+        )
+        .into()
+    } else if item.is_drive_game() {
+        my_button()
+            .icon(Icon::HardDriveUpload)
+            .label("Copy")
+            .on_press_with(|| Message::CopyToDrive(item.path.clone()))
+            .expand_width()
+            .into()
     } else {
-        text(format!("✓ {}", on.join(", "))).size(12).into()
+        space::horizontal().into()
     };
 
-    let details: Element<'_, Message> = match &item.rom {
-        Some(rom) => {
-            let details = tooltip(
-                text(details.join(" · ")).size(12),
-                my_card(text(rom_checksums(item, rom)).size(12)),
+    let release = item
+        .rom
+        .as_ref()
+        .and_then(release_target)
+        .map(|(platform, release)| {
+            tooltip(
+                my_button()
+                    .icon(Icon::ExternalLink)
+                    .on_press_with(move || Message::OpenRelease(platform, release.to_string())),
+                my_card("The release in libretro-database, with its checksums and serial"),
                 tooltip::Position::Bottom,
-            );
-            match release_link(rom) {
-                Some(link) => row![details, link]
-                    .spacing(8)
-                    .align_y(Alignment::Center)
-                    .into(),
-                None => details.into(),
-            }
-        }
-        None => text(details.join(" · ")).size(12).into(),
+            )
+        });
+
+    my_card(
+        column![
+            header,
+            details_tooltip(cover, item),
+            details_tooltip(
+                ellipsized_text(item.title()).wrapping(text::Wrapping::None),
+                item
+            ),
+            row![
+                status,
+                release,
+                tooltip(
+                    my_button()
+                        .icon(Icon::FolderOpen)
+                        .on_press_with(|| show_in_folder(item)),
+                    my_card("Show in its folder"),
+                    tooltip::Position::Bottom
+                ),
+            ]
+            .spacing(5)
+            .align_y(Alignment::Center),
+        ]
+        .align_x(Alignment::Center)
+        .padding(5)
+        .spacing(10),
+    )
+    .width(169.5)
+    .into()
+}
+
+/// A table row like the ones of the games on the drive
+fn item_row<'a>(item: &'a LibraryItem, state: &'a AppState) -> Element<'a, Message> {
+    let title = match item_id(item) {
+        Some(id) => format!("{} [{id}]", item.title()),
+        None => item.title().to_string(),
     };
+
+    let on = presence(item, state);
+    let copy = (on.is_empty() && item.is_drive_game()).then(|| {
+        row_button(
+            Icon::HardDriveUpload,
+            "Copy to drive",
+            Some(|| Message::CopyToDrive(item.path.clone())),
+        )
+    });
+    let release = item
+        .rom
+        .as_ref()
+        .and_then(release_target)
+        .map(|(platform, release)| {
+            row_button(
+                Icon::ExternalLink,
+                "The release in libretro-database",
+                Some(move || Message::OpenRelease(platform, release.to_string())),
+            )
+        });
 
     row![
-        icon,
-        column![text(item.title()), details]
-            .spacing(2)
-            .width(Length::Fill),
-        status
+        tooltip(
+            item_icon(item).widget(),
+            my_card(item.platform.label()),
+            tooltip::Position::Top
+        ),
+        details_tooltip(text(title), item),
+        space::horizontal(),
+        (!on.is_empty()).then(|| text!("✓ {}", on.join(", ")).size(12)),
+        text(Size::from_bytes(item.size).to_string()),
+        rule::vertical(1),
+        copy,
+        release,
+        row_button(
+            Icon::FolderOpen,
+            "Show in its folder",
+            Some(|| show_in_folder(item))
+        ),
     ]
-    .spacing(10)
+    .spacing(5)
+    .height(Length::Shrink)
     .align_y(Alignment::Center)
+    .padding(padding::all(2).left(5))
     .into()
 }
 
@@ -306,40 +456,11 @@ fn rom_verdict(rom: &RomInfo) -> String {
     }
 }
 
-/// A link to the release's entry in libretro-database, for a ROM that is a known dump
-fn release_link(rom: &RomInfo) -> Option<Element<'_, Message>> {
+/// The release in libretro-database's DAT on GitHub, for a ROM that is a known dump
+fn release_target(rom: &RomInfo) -> Option<(Platform, &str)> {
     let found = rom.identified.as_ref()?;
-    if found.how == Match::Serial || !romdb::has_release_page(found.platform) {
-        return None;
-    }
-
-    fn style(theme: &Theme, status: button::Status) -> button::Style {
-        button::Style {
-            text_color: theme.palette().primary,
-            ..button::text(theme, status)
-        }
-    }
-
-    let link = button(
-        row![
-            Icon::ExternalLink.widget().size(12),
-            text("libretro-database").size(12)
-        ]
-        .spacing(4)
-        .align_y(Alignment::Center),
-    )
-    .style(style)
-    .padding(0)
-    .on_press_with(|| Message::OpenRelease(found.platform, found.release.clone()));
-
-    Some(
-        tooltip(
-            link,
-            my_card(text("The release's entry, with its checksums and serial").size(12)),
-            tooltip::Position::Bottom,
-        )
-        .into(),
-    )
+    (found.how != Match::Serial && romdb::has_release_page(found.platform))
+        .then_some((found.platform, found.release.as_str()))
 }
 
 /// The file, checksums and serial of a ROM, for the tooltip

@@ -57,7 +57,8 @@ each item is ticked off here (and gets its test log entry) when done.
    runner was missing for this pull request (2026-11-13), so this test is its macOS run too.
 10. **M2, box art in the library** (#67 and the artwork pull request on top of it): after a scan
    with a network the ROMs of the older consoles show their box art in place of the platform's
-   icon (look through GBA in the library); it looks right at 48 pixels. Test log entry.
+   icon (look through GBA in the library, as cards and as a table); it looks right at 96
+   pixels. Test log entry.
 
 ## How the app is meant to work
 
@@ -338,6 +339,16 @@ real collection: all 125 identified ROMs got their box art (5 through the listin
 open: title screens and logos, the game info showing them larger, Wii and GameCube discs in the
 library (GameTDB's covers, as the drive's games have), RetroGamesNexus for hacks, a first
 download of all covers with progress, descriptions.
+
+**Tenth pull request** (2026-11-13, branch `claude/m2-library-cards`, on top of the ninth): the
+library takes the design of the games on the drive (the maintainer's wish): as a grid, cards of
+169.5 pixels with the game ID (a 3DS title ID's unique half, a ROM's serial) and size, the cover
+96 pixels high (the platform's icon when there is none), the title, "Copy" to the drive or where
+the game is already, the release in libretro-database and "Show in its folder"; as a table, a
+row per item with the same buttons. Grid or table is the drive's setting (`view_as`); the
+search is the drive's search bar. Platform, kind, copies, the database's verdict and the
+checksums are in a tooltip on the cover and the title. Seen on the maintainer's Linux computer
+with the real collection, both views.
 
 ### M2b · Explain and repair bad dumps (M) – after M2
 

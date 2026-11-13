@@ -80,6 +80,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🖼️ ROMs the game databases know show their box art in the library, from libretro's thumbnail
   server. Each picture is downloaded once after a scan and kept small (about 30 KB) in the data
   folder; when the server has it under an older name of the release, that one is found too.
+- 🗂️ The library looks like the list of games on the drive: cards with the cover, ID, size and
+  buttons, or a table, switched with the same buttons; details and checksums in a tooltip, a
+  button that shows the file in its folder.
 
 ## [v6.1.9] - 2026-10-21
 
