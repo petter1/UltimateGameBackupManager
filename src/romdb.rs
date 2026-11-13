@@ -453,6 +453,49 @@ fn names_the_same_game(gametdb: &str, redump: &str) -> bool {
     words(gametdb).iter().all(|word| redump.contains(word))
 }
 
+/// GameTDB's names of Wii U titles (`assets/databases/gametdb/wiiu.txt`), by GameTDB's ID: the
+/// product code ("AF6P", the eShop's titles) or the product code and maker ("AF6P52")
+static WIIU_TITLES: LazyLock<HashMap<Box<str>, Box<str>>> =
+    LazyLock::new(|| parse_gametdb(include_str!("../assets/databases/gametdb/wiiu.txt")));
+
+/// Lines of `ID = name` as GameTDB's `*tdb.txt` have them; the first line (`TITLES = …`) names
+/// the list
+fn parse_gametdb(text: &str) -> HashMap<Box<str>, Box<str>> {
+    text.lines()
+        .skip(1)
+        .filter_map(|line| line.split_once(" = "))
+        .filter(|(id, name)| !id.is_empty() && !name.trim().is_empty())
+        .map(|(id, name)| (id.trim().into(), name.trim().into()))
+        .collect()
+}
+
+/// GameTDB's name of the Wii U title with this product code ("AF6P" from "WUP-P-AF6P"): the
+/// name of the ID that is the code, else the one name of all IDs that start with it (the code
+/// with each maker); none when they name different games
+fn wiiu_title(titles: &HashMap<Box<str>, Box<str>>, code: &str) -> Option<String> {
+    if let Some(name) = titles.get(code) {
+        return Some(name.to_string());
+    }
+    let mut names = titles
+        .iter()
+        .filter(|(id, _)| id.len() == 6 && id.starts_with(code))
+        .map(|(_, name)| name);
+    let first = names.next()?;
+    names.all(|name| name == first).then(|| first.to_string())
+}
+
+/// The name of a Wii U title by the product code in its name ("AF6P" from "WUP-P-AF6P"): GameTDB's
+/// for a Wii U game. vWii titles and the forwarders of Wii and GameCube games carry the game's own
+/// code ("WUP-N-RMCP" is Mario Kart Wii): Redump's name of that Wii, else GameCube, game.
+pub fn product_name(code: &str) -> Option<String> {
+    if code.len() != 4 {
+        return None;
+    }
+    wiiu_title(&WIIU_TITLES, code)
+        .or_else(|| active().disc_by_game_id(Platform::Wii, code))
+        .or_else(|| active().disc_by_game_id(Platform::GameCube, code))
+}
+
 /// The Redump name of the Wii or GameCube disc with this SHA-1 (of the whole disc), when it is a
 /// known good dump
 pub fn disc_by_sha1(platform: Platform, sha1: &[u8; 20]) -> Option<String> {
@@ -531,6 +574,43 @@ pub fn has_database(platform: Platform) -> bool {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn wii_u_titles_are_named_by_their_product_code() {
+        let titles = super::parse_gametdb(
+            "TITLES = https://www.gametdb.com (type: WiiU language: EN version: 1)\n\
+             AF6E52 = Fast & Furious: Showdown\n\
+             AF6P52 = Fast & Furious: Showdown\n\
+             WAFP = Mario vs. Donkey Kong: Tipping Stars\n\
+             WAFP01 = Mario vs. Donkey Kong: Tipping Stars (Download Code)\n\
+             AMFJ01 = Monster Hunter Frontier Z\n\
+             AMFJ8P = Monster Hunter Frontier G: Beginner's Package\n\
+             BROKEN LINE\n",
+        );
+        let name = |code| super::wiiu_title(&titles, code);
+        assert_eq!(name("AF6P").as_deref(), Some("Fast & Furious: Showdown"));
+        // the ID that is the code itself wins
+        assert_eq!(
+            name("WAFP").as_deref(),
+            Some("Mario vs. Donkey Kong: Tipping Stars")
+        );
+        // two games on one code: no name
+        assert_eq!(name("AMFJ"), None);
+        assert_eq!(name("ZZZZ"), None);
+
+        // the shipped list, and the Wii game behind a vWii title
+        assert_eq!(
+            super::product_name("AF6P").as_deref(),
+            Some("Fast & Furious: Showdown")
+        );
+        assert!(
+            super::product_name("RMCP")
+                .is_some_and(|name| name.starts_with("Mario Kart Wii (Europe")),
+            "{:?}",
+            super::product_name("RMCP")
+        );
+        assert!(super::product_name("AF6").is_none());
+    }
 
     #[test]
     fn a_hack_on_another_games_code_gets_no_redump_name() {
