@@ -44,6 +44,10 @@ Handover between sessions; the session that changes the state updates this secti
 start from `main` and only see what is there, so the update goes to `main` in its own small
 `docs/` pull request (merged right away), not only in the feature branch. As of 2026-11-13 (evening):
 
+- **No GitHub Actions minutes left** (2026-11-13 evening, the maintainer): CI doesn't run until
+  the minutes come back. Until then the checks of "Where things are" run locally (on the
+  maintainer's Linux computer or the Mac) before a merge, and the pull request says so; a macOS
+  check needs the Mac. Merging without CI is the maintainer's call.
 - **CI runs again** (2026-11-10 morning, all three systems; the macOS runners were missing on
   2026-11-09 evening). Merged 2026-11-10: #45 and #47 (documentation, the comparison with
   vcinject in the roadmap), #46 (both discs of a two-disc GameCube game hashed), #36 (a game
