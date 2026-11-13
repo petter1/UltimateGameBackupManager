@@ -43,6 +43,19 @@ console, a real drive or a real collection can show.
 
 ## Entries
 
+### 2026-11-13 · gamestation · Wii U names from GameTDB
+
+| | |
+| --- | --- |
+| **Device** | gamestation, USB HDD, HFS+, mounted read-only on Linux |
+| **What** | Wii U titles named by product code get GameTDB's name (`claude/m2-gametdb-wiiu`) |
+| **Who** | Claude, on the maintainer's Linux computer |
+| **When** | 2026-11-13, Arch Linux, debug build |
+| **How** | Portable build with `gamestation/Games` as the ROM source, started without a network; `library.json` compared with the scan before the change |
+| **Why** | 110 Wii U entries showed only their product code ("WUP-P-AF6P") |
+| **Result** | ✅ 109 of 110 named: "WUP-P-AF6P" → "Fast & Furious: Showdown", "WUP-P-AUME v400" → "Minecraft: Wii U Edition (v400)", "WUP-N-RMCP 00050002524D4350" → "Mario Kart Wii (Europe, Australia) (En,Fr,De,Es,It)"; no other name changed. Left: "WUP-P-HITS", not in GameTDB. |
+| **Follow-up** | The app refreshing GameTDB's list; 3DS cartridge dumps |
+
 ### 2026-11-13 · gamestation · RAR and 7z through 7-Zip
 
 | | |
