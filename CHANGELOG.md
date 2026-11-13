@@ -75,6 +75,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ("libretro-database" next to "good dump" in the library), where the release is listed with its
   checksums and serial; at the release's line once the app has checked for newer lists. Not for
   NES ROMs: GitHub doesn't show that list, it is too large.
+- 🔄 GameTDB's list of Wii U titles stays current too: the daily check for newer lists asks
+  GameTDB as well and uses a list with new or renamed titles from the next library scan on.
 
 ## [v6.1.9] - 2026-10-21
 

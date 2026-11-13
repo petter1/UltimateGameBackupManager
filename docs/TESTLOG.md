@@ -43,6 +43,19 @@ console, a real drive or a real collection can show.
 
 ## Entries
 
+### 2026-11-13 · Linux · GameTDB's Wii U list refreshed by the app
+
+| | |
+| --- | --- |
+| **Device** | the maintainer's Linux computer, with a network |
+| **What** | The daily check asks GameTDB for its Wii U list too (`claude/m2-gametdb-refresh`) |
+| **Who** | Claude, on the maintainer's Linux computer |
+| **When** | 2026-11-13, Arch Linux, debug build |
+| **How** | Portable build, `last_check` in `databases/state.json` set to 0, started for a minute; GameTDB's list downloaded by hand and compared with the shipped one |
+| **Why** | Only `scripts/update-databases.py` refreshed the list |
+| **Result** | ✅ The check ran without an error (`last_check` set); GameTDB's titles were the same as the shipped ones (only the version, the time of the request, differs), so no list was kept and nothing was said, as meant. The case of changed titles is covered by a unit test only. |
+| **Follow-up** | Watch for the message when GameTDB adds a title |
+
 ### 2026-11-13 · gamestation · link to the release's entry in libretro-database
 
 | | |

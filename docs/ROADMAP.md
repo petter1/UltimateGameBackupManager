@@ -312,6 +312,15 @@ identified ROMs. Still open: the app refreshing GameTDB's list, artwork, descrip
 for Wii and GameCube discs (the game info has the Redump name only by game ID, without disc and
 revision).
 
+**Eighth pull request** (2026-11-13, branch `claude/m2-gametdb-refresh`, on top of the seventh):
+the app refreshes GameTDB's Wii U list at the daily check. GameTDB sends no ETag and its version
+is the time of the request, so the list (about 80 KB) is downloaded at every check and kept in
+`databases/gametdb/wiiu.txt` only when its titles differ from the list in use and it is newer;
+only then the app says so ("GameTDB - Wii U (2026.11.13)"). Names from it apply from the next
+library scan (every start), since Wii U names are made by the scan. Tried 2026-11-13 on Linux:
+the check asked GameTDB, whose titles were the shipped ones, so nothing was kept or said. Still
+open: the build refreshing the snapshot, artwork, descriptions.
+
 ### M2b · Explain and repair bad dumps (M) – after M2
 
 Today the game info's "SHA1" button only says "Hash mismatch" (a dump's SHA-1 against the Redump
