@@ -50,6 +50,11 @@ each item is ticked off here (and gets its test log entry) when done.
    counts in place of the Mac), see the test log. #56 named 14 hacks after other games; fixed
    before merging. Found on the way, for later in M2: zips renamed to `.gba` are read as raw ROMs
    (9 files, #59), and `.7z` isn't read yet (read through 7-Zip since the fifth M2 pull request).
+9. **M2, link to the release's entry** (#66, merged only after this test): with the real
+   collection and a network, start the app once (the check for newer lists notes the lines), then
+   click "libretro-database" next to a good dump, e.g. a GBA game: the browser opens the DAT on
+   GitHub at that release's `game (` block. A NES ROM has no link. Test log entry; the macOS CI
+   runner was missing for this pull request (2026-11-13), so this test is its macOS run too.
 
 ## How the app is meant to work
 
