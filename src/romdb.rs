@@ -577,6 +577,13 @@ pub fn release_url(platform: Platform, release: &str) -> Option<String> {
     Some(url)
 }
 
+/// The name of `platform`'s list in libretro-database ("Nintendo - Game Boy Advance"), which is
+/// also its folder on libretro's thumbnail server; `platform` is the list's
+/// ([`Identified::platform`])
+pub fn list_name(platform: Platform) -> Option<&'static str> {
+    List::of(platform).map(List::dat_name)
+}
+
 /// Looks a ROM up in the lists of its platform: by SHA-1, then CRC32, then serial
 pub fn identify(platform: Platform, rom: &RomHashes) -> Option<Identified> {
     active().identify(platform, rom)

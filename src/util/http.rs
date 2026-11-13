@@ -209,6 +209,21 @@ pub async fn post_then_download_file(uri: &str, data: String, dest: &Path) -> Re
     .await
 }
 
+/// Downloads a file into memory; blocking. None when the server doesn't have it (404), an error
+/// when it doesn't answer or the file is larger than `max_len`.
+pub fn get_bytes(uri: &str, max_len: usize) -> Result<Option<Vec<u8>>> {
+    let resp = minreq::get(uri)
+        .with_header("User-Agent", USER_AGENT)
+        .with_timeout(timeout::GENERIC_API)
+        .send()?;
+    match resp.status_code {
+        404 => Ok(None),
+        200..=299 if resp.as_bytes().len() > max_len => bail!("{uri} is too large"),
+        200..=299 => Ok(Some(resp.into_bytes())),
+        code => bail!("error downloading {uri}: {code}"),
+    }
+}
+
 /// A text file that changed since it was last downloaded
 pub struct Changed {
     pub text: String,

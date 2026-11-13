@@ -55,6 +55,9 @@ each item is ticked off here (and gets its test log entry) when done.
    click "libretro-database" next to a good dump, e.g. a GBA game: the browser opens the DAT on
    GitHub at that release's `game (` block. A NES ROM has no link. Test log entry; the macOS CI
    runner was missing for this pull request (2026-11-13), so this test is its macOS run too.
+10. **M2, box art in the library** (#67 and the artwork pull request on top of it): after a scan
+   with a network the ROMs of the older consoles show their box art in place of the platform's
+   icon (look through GBA in the library); it looks right at 48 pixels. Test log entry.
 
 ## How the app is meant to work
 
@@ -320,6 +323,21 @@ only then the app says so ("GameTDB - Wii U (2026.11.13)"). Names from it apply 
 library scan (every start), since Wii U names are made by the scan. Tried 2026-11-13 on Linux:
 the check asked GameTDB, whose titles were the shipped ones, so nothing was kept or said. Still
 open: the build refreshing the snapshot, artwork, descriptions.
+
+**Ninth pull request** (2026-11-13, branch `claude/m2-artwork`, on top of the eighth): box art
+for the ROMs identified by checksum, from libretro's thumbnail server
+(`src/library/artwork.rs`), shown in place of the platform's icon in the library. Looked up by
+the release's name; the server's names lag behind the lists' ("Metroid - Zero Mission (USA)" for
+today's "(USA, Australia)", "Mega Man Battle Network" without the dash), so when the name isn't
+there the folder's listing (about 2 MB, kept a month) gives the picture of the same title with
+the most tags in common, not a Virtual Console or beta one. Downloaded one after the other after a
+scan, made 256 pixels at most and kept as JPEG (about 30 KB; `image` gets its `jpeg` feature) in
+`covers/libretro/<list>/Named_Boxarts/` in the data folder; a picture the server doesn't have is
+asked for again after a month; without a network the downloads stop at the first error. On the
+real collection: all 125 identified ROMs got their box art (5 through the listing), 4 MB. Still
+open: title screens and logos, the game info showing them larger, Wii and GameCube discs in the
+library (GameTDB's covers, as the drive's games have), RetroGamesNexus for hacks, a first
+download of all covers with progress, descriptions.
 
 ### M2b · Explain and repair bad dumps (M) – after M2
 

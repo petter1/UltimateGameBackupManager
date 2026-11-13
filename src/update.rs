@@ -7,7 +7,7 @@ use crate::{
     games::{BulkCopy, ImportEntry, games_state::GamesState, txtcodes::download_cheats},
     homebrew::homebrew_state::HomebrewState,
     jobs::Job,
-    library,
+    library::{self, artwork},
     message::Message,
     notifications::notification::Notification,
     osc::osc_state::OscState,
@@ -658,12 +658,14 @@ impl AppState {
                 // a finished scan is newer than the cache
                 if !self.library.scanned_once {
                     library::reidentify(&mut items);
+                    artwork::show_kept(self.data_dir, &mut items);
                     self.library.items = items;
                 }
                 Task::none()
             }
             Message::GameDatabasesUpdated(updated) => {
                 library::reidentify(&mut self.library.items);
+                artwork::show_kept(self.data_dir, &mut self.library.items);
                 let notify = Task::done(Message::Notify(Notification::info(format!(
                     "Game databases updated: {}",
                     updated
@@ -688,6 +690,11 @@ impl AppState {
             Message::GotLibrary(mut items) => {
                 // the game databases may have been updated while the scan ran
                 library::reidentify(&mut items);
+                artwork::show_kept(self.data_dir, &mut items);
+                let boxart =
+                    Task::stream(artwork::download(self.data_dir, artwork::wanted(&items))).map(
+                        |(platform, release, path)| Message::GotBoxart(platform, release, path),
+                    );
                 let save = Task::perform(
                     library::save_cache(self.data_dir, items.clone()),
                     |res| match res {
@@ -705,7 +712,11 @@ impl AppState {
                 {
                     self.library.platform = None;
                 }
-                save
+                Task::batch([save, boxart])
+            }
+            Message::GotBoxart(platform, release, path) => {
+                artwork::show(&mut self.library.items, platform, &release, &path);
+                Task::none()
             }
             Message::FilterLibrary(platform) => {
                 self.library.platform = platform;

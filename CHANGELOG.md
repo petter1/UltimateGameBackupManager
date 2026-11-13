@@ -77,6 +77,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   NES ROMs: GitHub doesn't show that list, it is too large.
 - 🔄 GameTDB's list of Wii U titles stays current too: the daily check for newer lists asks
   GameTDB as well and uses a list with new or renamed titles from the next library scan on.
+- 🖼️ ROMs the game databases know show their box art in the library, from libretro's thumbnail
+  server. Each picture is downloaded once after a scan and kept small (about 30 KB) in the data
+  folder; when the server has it under an older name of the release, that one is found too.
 
 ## [v6.1.9] - 2026-10-21
 

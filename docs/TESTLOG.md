@@ -43,6 +43,19 @@ console, a real drive or a real collection can show.
 
 ## Entries
 
+### 2026-11-13 · gamestation · box art from libretro's thumbnails
+
+| | |
+| --- | --- |
+| **Device** | gamestation, USB HDD, HFS+, mounted read-only on Linux, with a network |
+| **What** | Box art of the identified ROMs (`claude/m2-artwork`) |
+| **Who** | Claude, on the maintainer's Linux computer |
+| **When** | 2026-11-13, Arch Linux, debug build |
+| **How** | Portable build with `gamestation/Games` as the ROM source, started for two minutes; the files in `covers/libretro/` counted |
+| **Why** | The library showed only the platform's icon for ROMs |
+| **Result** | ✅ All 125 ROMs identified by checksum got a box art (101 GBA, 14 GBC, 8 GB, 1 SNES, 1 NES), 5 of them by the folder's listing under an older name (Metroid - Zero Mission, Mega Man Battle Network 3–6), each time the USA release, not the Virtual Console one; about 31 KB each as JPEG (120 KB as PNG). Not seen in the window: no input tools on Wayland to scroll to the ROMs. |
+| **Follow-up** | Look at the box art in the window (item 10 in "Waiting for the Mac") |
+
 ### 2026-11-13 · Linux · GameTDB's Wii U list refreshed by the app
 
 | | |
