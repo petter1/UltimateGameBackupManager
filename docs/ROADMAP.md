@@ -702,6 +702,54 @@ its own.
   with an HTTP API, a web UI and the same UI as desktop app (Tauri) and as Android and iPhone app,
   a Docker image with a compose file, several devices on one engine at once, 21 languages.
 
+### M10 · PlayStation 5 through ps5upload's helper (L)
+
+The PS5 as one more device (the maintainer, 2026-11-14), not a fork of ps5upload. Looked at on
+2026-11-14 in ps5upload at 583cb971 and AVA1 1.0.10; nothing built yet.
+
+**What is there to take over**
+- **AVA1** (<https://github.com/phantomptr/ava1>, `ava1` on crates.io, MIT OR Apache-2.0, by
+  phantomptr): the protocol every ps5upload transfer uses, a library of its own that doesn't
+  depend on ps5upload. Up to 8 parallel lanes, a journal on the receiver so a dropped connection
+  or a restart carries on, every file checked with BLAKE3, Noise and ChaCha20-Poly1305, pairing
+  with a short code the console shows. The Rust crate is client and node (on tokio); the C
+  library (`c/`, 16,000 lines, C11, POSIX threads and sockets, a platform layer of six
+  functions) is the node, which runs on the PS5.
+- **ps5upload's helper** on the console (its payload, GPL-3.0): the AVA1 node on port 9120 plus
+  ps5upload's own methods (`protocol/ps5upload-ava1/app.toml`, `MGMT_METHODS.md`): files, games,
+  packages, saves, power. The client's codecs are generated from `app.toml` with `ava1-gen`.
+  ps5upload's client (`engine/crates/ps5upload-ava1`, 17,800 lines) leans on its core crate in
+  111 places, so it is the reference, not something to copy whole.
+
+**Steps, each usable**
+1. **Find and pair** (M): the `ava1` crate in the core, on its own tokio runtime next to the
+   app's smol; a PS5 that already runs ps5upload's helper (started by ps5upload or an
+   autoloader) is added by address in My Consoles, paired with the code it shows, and shows its
+   node info. Identity and peers in the data folder, as ps5upload keeps them.
+2. **What is on it** (M): ps5upload's generated codecs (`app_gen.rs`, regenerated from its
+   `app.toml`) and the few methods needed: volumes and free space, the installed games; shown
+   like a console's titles.
+3. **Send a game** (M–L): a folder or file as a task with AVA1's `send_job`: resumed after a
+   drop, verified, refused when it won't fit. ps5upload's `upload.rs` and `space.rs` as the
+   reference.
+4. **Start the helper** (M): send ps5upload's helper ELF to the console's ELF loader (port
+   9021), stamped with this app's key (AVA1's trust slot), so ps5upload isn't needed at all.
+   The helper comes from ps5upload's release, not built here; its version and `app.toml` have
+   to match, so the app pins one release and says so.
+5. Later: install packages, saves, the library grouping PS5 games with the rest (M4).
+
+**Open**
+- Who tests: needs a jailbroken PS5 with an ELF loader. Without one only the pairing and the
+  transfers can be tried, against AVA1's own example node on the computer.
+- `ava1` needs `ring`; whether the Windows XP build (`i686-win7`, "legacy") can have it, or the
+  PS5 is left out there.
+- ps5upload releases almost daily: how often the pinned helper is moved.
+- **Resuming elsewhere**: AVA1 is between two devices on a network, so it doesn't help copies
+  to a drive; those get their own resume (compare sizes, verify), as M1a says. For the 3DS the C
+  node could replace vcinject Link's own protocol (resume, verification and encryption for
+  free), if libctru's threads, sockets and memory carry it – to try with devkitPro, and part of
+  the decision about vcinject Link 14.
+
 ## Open questions
 
 - How large the database snapshot gets, and whether it needs Git LFS: the No-Intro lists of six
@@ -728,9 +776,9 @@ its own.
   large (about 15 MB of Rust, 30 MB of TypeScript) and released almost daily (30 releases in the
   week to 2026-11-13), so a fork falls behind at once or costs a merge every day; this app's UI
   would be rewritten in TypeScript; TinyWiiBackupManager's code is GPL-3.0-only, so it can't go
-  upstream. The other way round looks cheaper: the PS5 as one more device here, talking AVA1
-  (ps5upload's protocol, its own repository `phantomptr/ava1`) to ps5upload's payload, and
-  ps5upload's ideas taken over (marked "From ps5upload" above).
+  upstream. Decided 2026-11-14 (the maintainer): no fork. The PS5 becomes one more device here
+  (M10), ps5upload's ideas and code are taken over with credits (marked "From ps5upload" above;
+  first #74, RAR and 7z without 7-Zip), and the core is built without iced (M9).
 - vcinject Link (M1, M6): where its next version is developed – in vcinject's `companion/` as
   until now, or moved here and renamed for the protocol's `ugbm?` discovery – and whether vcinject
   itself goes on next to this app or only as the injector's sidecar.
