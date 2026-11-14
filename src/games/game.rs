@@ -5,9 +5,7 @@ use crate::util::fs::get_dir_size;
 use anyhow::{Context, Result, bail};
 use arrayvec::ArrayString;
 use iced::widget::image;
-use size::Size;
 use smol::fs;
-use std::fmt::Write;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
@@ -83,8 +81,7 @@ impl Game {
 
         let size = get_dir_size(&path).await;
 
-        let mut size_str = ArrayString::new();
-        let _ = write!(&mut size_str, "{}", Size::from_bytes(size));
+        let size_str = crate::util::size::size_str(size);
 
         let search_term_lowercase = format!("{}\0{}", title, id).to_lowercase().into_boxed_str();
 

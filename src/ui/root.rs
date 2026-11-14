@@ -12,7 +12,8 @@ use crate::{
         },
         modals::{
             Modal, confirm_scub::confirm_scrub, delete_dir::delete_dir, game_info::game_info,
-            homebrew_app_info::homebrew_app_info, osc_app_info::osc_app_info,
+            homebrew_app_info::homebrew_app_info, library_info::library_info,
+            osc_app_info::osc_app_info,
         },
         pages::{
             Page, about::about, consoles::consoles, games::games, homebrew_apps::homebrew_apps,
@@ -23,7 +24,7 @@ use crate::{
 };
 use iced::{
     Background, Element, Length, Theme, color,
-    widget::{column, container, opaque, row, stack},
+    widget::{column, container, opaque, row, space, stack},
 };
 
 pub fn view(state: &AppState) -> Element<'_, Message> {
@@ -62,6 +63,12 @@ pub fn view(state: &AppState) -> Element<'_, Message> {
                     Modal::OscAppInfo(app) => osc_app_info(app),
                     Modal::DeleteDir(path) => delete_dir(path),
                     Modal::ConfirmScrub(game) => confirm_scrub(game),
+                    Modal::LibraryInfo(path) => {
+                        match state.library.items.iter().find(|i| &i.path == path) {
+                            Some(item) => library_info(item, state),
+                            None => space().into(),
+                        }
+                    }
                 })
                 .center(Length::Fill)
                 .style(|theme: &Theme| container::Style {

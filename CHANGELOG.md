@@ -80,6 +80,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🖼️ ROMs the game databases know show their box art in the library, from libretro's thumbnail
   server. Each picture is downloaded once after a scan and kept small (about 30 KB) in the data
   folder; when the server has it under an older name of the release, that one is found too.
+- 🗂️ The library looks like the list of games on the drive: cards with the cover, ID, size and
+  buttons, or a table, switched with the same buttons, and an "Info" window like the game info,
+  with the cover larger, what the game database says, the checksums and the release's link.
+- 📏 Sizes in the lists always have one decimal ("688.1 MiB", "1.4 GiB"), and a card shows the
+  ID and the size on two lines, so all cards are the same height.
+- 📦 The box art of the older consoles' games is shown as a box seen at an angle, like the Wii
+  and GameCube covers: turned from the flat picture when the library loads, nothing more kept.
 
 ## [v6.1.9] - 2026-10-21
 

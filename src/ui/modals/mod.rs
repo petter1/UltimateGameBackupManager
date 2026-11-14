@@ -8,6 +8,7 @@ pub mod confirm_scub;
 pub mod delete_dir;
 pub mod game_info;
 pub mod homebrew_app_info;
+pub mod library_info;
 pub mod osc_app_info;
 
 #[derive(Debug, Clone)]
@@ -17,4 +18,6 @@ pub enum Modal {
     OscAppInfo(OscApp),
     DeleteDir(PathBuf),
     ConfirmScrub(Game),
+    /// the library item at this path
+    LibraryInfo(PathBuf),
 }

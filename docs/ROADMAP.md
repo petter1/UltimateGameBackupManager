@@ -57,7 +57,13 @@ each item is ticked off here (and gets its test log entry) when done.
    runner was missing for this pull request (2026-11-13), so this test is its macOS run too.
 10. **M2, box art in the library** (#67 and the artwork pull request on top of it): after a scan
    with a network the ROMs of the older consoles show their box art in place of the platform's
-   icon (look through GBA in the library); it looks right at 48 pixels. Test log entry.
+   icon (look through GBA in the library, as cards and as a table); it looks right at 96
+   pixels. Test log entry.
+
+**From ps5upload** (compared 2026-11-14): its tests have four layers, cheapest first, and the
+real-hardware one is one command (`npm run smoke:hardware`): it sends files of several sizes to a
+live PS5, checks them and cleans up. The same here (a script for the Mac: one 3DS, the drive)
+would turn several of the items above into one run with a log instead of clicking through.
 
 **From ps5upload** (compared 2026-11-14): its tests have four layers, cheapest first, and the
 real-hardware one is one command (`npm run smoke:hardware`): it sends files of several sizes to a
@@ -362,6 +368,26 @@ real collection: all 125 identified ROMs got their box art (5 through the listin
 open: title screens and logos, the game info showing them larger, Wii and GameCube discs in the
 library (GameTDB's covers, as the drive's games have), RetroGamesNexus for hacks, a first
 download of all covers with progress, descriptions.
+
+**Tenth pull request** (2026-11-13, branch `claude/m2-library-cards`, on top of the ninth): the
+library takes the design of the games on the drive (the maintainer's wish): as a grid, cards of
+169.5 pixels exactly as `game_card` (tag, game ID or a 3DS title ID's unique half or a ROM's
+serial, size; the cover 96 pixels high, the platform's icon when there is none; the title;
+"Info", the release in libretro-database, then "Copy to drive", a check mark where the game is
+already, or "Show in its folder"); as a table, a row per item with the same buttons. Grid or
+table is the drive's setting (`view_as`); the search is the drive's search bar. "Info" opens a
+window like the game info (`src/ui/modals/library_info.rs`): title, path, system, kind, size,
+ID, the database's verdict, CRC32 and SHA-1, copies, where it is, the cover 200 pixels high,
+the release's link and "Copy to drive". The cards, rows, grid and table are one component for both pages
+(`src/ui/components/game_list.rs`); `game_card` and `game_row` of the drive's games use it too. Sizes in the lists always have
+one decimal (`src/util/size.rs`), and a card shows ID and size on two lines, so all are the same
+height. The flat box art is shown as a box seen at an angle, like GameTDB's `cover3D` of the
+drive's games (the maintainer's wish): `src/library/box3d.rs` puts the front in perspective and
+a darker spine (the picture's left edge, the silver strip of a GBA box) on the left, with a
+transparent background, when the library loads (in the background, from the kept JPEGs first,
+so also without a network); kept as PNGs the boxes were 17 MB for 125, so they aren't kept. Seen on the maintainer's Linux computer with the real
+collection, both views and the info window; this is the "game info showing them larger" of the
+ninth pull request's open points, for ROMs.
 
 ### M2b · Explain and repair bad dumps (M) – after M2
 

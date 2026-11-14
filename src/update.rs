@@ -153,6 +153,10 @@ impl AppState {
 
                 Task::none()
             }
+            Message::OpenLibraryInfo(path) => {
+                self.current_modal = Some(Modal::LibraryInfo(path));
+                Task::none()
+            }
             Message::OpenGameInfo(game) => {
                 self.current_modal = Some(Modal::GameInfo((game.clone(), None, false)));
 
@@ -658,14 +662,15 @@ impl AppState {
                 // a finished scan is newer than the cache
                 if !self.library.scanned_once {
                     library::reidentify(&mut items);
-                    artwork::show_kept(self.data_dir, &mut items);
+                    let boxart = self.load_boxart(&items);
                     self.library.items = items;
+                    return boxart;
                 }
                 Task::none()
             }
             Message::GameDatabasesUpdated(updated) => {
                 library::reidentify(&mut self.library.items);
-                artwork::show_kept(self.data_dir, &mut self.library.items);
+                let boxart = self.load_boxart(&self.library.items);
                 let notify = Task::done(Message::Notify(Notification::info(format!(
                     "Game databases updated: {}",
                     updated
@@ -676,7 +681,7 @@ impl AppState {
                 ))));
                 // before the first scan the items are the cache's, which a scan saves anyway
                 if !self.library.scanned_once {
-                    return notify;
+                    return Task::batch([notify, boxart]);
                 }
                 let save = Task::perform(
                     library::save_cache(self.data_dir, self.library.items.clone()),
@@ -685,16 +690,13 @@ impl AppState {
                         Err(e) => Message::Notify(e.into()),
                     },
                 );
-                Task::batch([save, notify])
+                Task::batch([save, notify, boxart])
             }
             Message::GotLibrary(mut items) => {
                 // the game databases may have been updated while the scan ran
                 library::reidentify(&mut items);
-                artwork::show_kept(self.data_dir, &mut items);
-                let boxart =
-                    Task::stream(artwork::download(self.data_dir, artwork::wanted(&items))).map(
-                        |(platform, release, path)| Message::GotBoxart(platform, release, path),
-                    );
+                artwork::carry_over(&self.library.items, &mut items);
+                let boxart = self.load_boxart(&items);
                 let save = Task::perform(
                     library::save_cache(self.data_dir, items.clone()),
                     |res| match res {
@@ -714,8 +716,8 @@ impl AppState {
                 }
                 Task::batch([save, boxart])
             }
-            Message::GotBoxart(platform, release, path) => {
-                artwork::show(&mut self.library.items, platform, &release, &path);
+            Message::GotBoxart(platform, release, handle) => {
+                artwork::show(&mut self.library.items, platform, &release, &handle);
                 Task::none()
             }
             Message::FilterLibrary(platform) => {
@@ -1069,5 +1071,16 @@ mod tests {
                 .iter()
                 .any(|n| n.label().ends_with("is already on the drive"))
         );
+    }
+}
+
+impl AppState {
+    /// Loads the box art of the items that show none yet, in the background
+    fn load_boxart(&self, items: &[library::LibraryItem]) -> Task<Message> {
+        Task::stream(artwork::load(
+            self.data_dir,
+            artwork::wanted(self.data_dir, items),
+        ))
+        .map(|(platform, release, handle)| Message::GotBoxart(platform, release, handle))
     }
 }
