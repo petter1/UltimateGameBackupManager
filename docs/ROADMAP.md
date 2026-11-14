@@ -45,6 +45,12 @@ each item is ticked off here (and gets its test log entry) when done.
 5. **M1c, copy all to drive** (#41): in the library search a small Wii or GameCube game that
    isn't on WiiGames, "Copy all to drive" → one import task; search one that is there → the
    button is gone. Test log entry.
+6. **M1a, unfinished tasks after a restart** (#13): start two
+   imports to WiiGames, quit the app (⌘Q) while the first one runs. Start again: a notification,
+   and both are listed on the Tasks page. Drop the first: its half-written files in `wbfs/` or
+   `games/` are gone. Resume the second: it imports completely. Also quit during a scrub and
+   resume it (the game must still start in USB Loader GX), and start once with WiiGames
+   unplugged: resuming fails with "is not connected" and the task stays listed. Test log entry.
 8. ~~**M2, game databases** (#48, #53 and #56 on top of them)~~: done 2026-11-12/13 on Linux
    with the real collection (gamestation, HFS+ mounted read-only; the maintainer agreed that this
    counts in place of the Mac), see the test log. #56 named 14 hacks after other games; fixed
@@ -122,8 +128,11 @@ by hand already. Only M6a needs M1b and M1d, so they come right before it.
    2026-10-30, merged 2026-10-31): `src/util/keep_awake.rs`, held while `tasks.is_busy()` (a paused task lets go).
    Tried on the Mac 2026-10-31: `caffeinate` runs only while a task runs; the long sleep test
    (item 4 in "Waiting for the Mac") is still due.
-5. **Unfinished tasks after a restart**: listed again, to resume or drop. Split off from 3,
-   which was big enough; needs the jobs saved in the data folder.
+5. **Unfinished tasks after a restart** (#13, waiting for the Mac):
+   the open tasks are kept in `tasks.json` in the data folder; after a restart they are listed on
+   the Tasks page, to resume (from the beginning) or drop. What a task half-wrote before the app
+   was closed is removed first. Installs on a console (#11) aren't saved yet: whichever of the
+   two is merged second adds `SavedJob::Install`.
    **From ps5upload** (compared 2026-11-14, see "Open questions"): an upload that stops (dropped
    connection, restart, a full drive) keeps its partial copy; *Resume* compares the sizes of
    what is there with the source and sends only the rest; every file is verified at the end.

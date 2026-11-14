@@ -32,4 +32,5 @@ pub mod sidebar;
 pub mod task_bar;
 pub mod task_row;
 pub mod tasks_titlebar;
+pub mod unfinished_tasks;
 pub mod wiiload;
