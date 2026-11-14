@@ -10,7 +10,10 @@
 //! Each download also notes the line of every game in the DAT, for the link to a release's
 //! entry on GitHub ([`super::release_url`]).
 
-use super::{List, downloaded_dir, header_version, is_newer, reload};
+use super::{
+    List, WIIU_PATH, downloaded_dir, gametdb_version, header_version, is_newer, parse_gametdb,
+    reload, wiiu_text_in_use,
+};
 use crate::util::http::{self, Changed};
 use anyhow::{Result, bail};
 use std::{
@@ -22,6 +25,11 @@ use std::{
 };
 
 const BASE: &str = "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/";
+
+/// GameTDB's list of Wii U titles, English names. It has no ETag and its version is the time it
+/// was asked for, so it is downloaded at every check (about 80 KB) and kept when its titles
+/// changed.
+const GAMETDB_WIIU: &str = "https://www.gametdb.com/wiiutdb.txt?LANG=EN";
 
 /// What the app remembers between checks, in the folder of the downloaded lists
 const STATE_FILE: &str = "state.json";
@@ -126,6 +134,21 @@ fn update_lists(
         }
     }
 
+    match fetch(GAMETDB_WIIU, None).and_then(|changed| match changed {
+        Some(changed) => save_wiiu_if_changed(dir, &changed.text),
+        None => Ok(None),
+    }) {
+        Ok(Some(version)) => updated.push(Updated {
+            list: "GameTDB - Wii U",
+            version,
+        }),
+        Ok(None) => {}
+        Err(e) => {
+            eprintln!("WARNING: game database GameTDB - Wii U: {e:#}");
+            failed.get_or_insert(e);
+        }
+    }
+
     // a list that failed is asked for again at the next start
     if failed.is_none() {
         state.last_check = now;
@@ -164,6 +187,44 @@ fn save_if_newer(dir: &Path, list: List, dat: &str) -> Result<Option<String>> {
     file.write_all(to_text(list, &version, &lines).as_bytes())?;
     file.persist(&path)?;
     Ok(Some(version))
+}
+
+/// Keeps a downloaded GameTDB list of Wii U titles when its titles differ from the list in use
+/// (and it is newer); returns its version then, as a date ("2026.11.13")
+fn save_wiiu_if_changed(dir: &Path, text: &str) -> Result<Option<String>> {
+    // as `scripts/update-databases.py` keeps it: Unix line ends, no empty lines
+    let mut lines: String = text
+        .lines()
+        .map(|line| line.strip_suffix('\r').unwrap_or(line))
+        .filter(|line| !line.trim().is_empty())
+        .collect::<Vec<_>>()
+        .join("\n");
+    lines.push('\n');
+
+    let Some(version) = gametdb_version(&lines) else {
+        bail!("not a GameTDB list");
+    };
+    let titles = parse_gametdb(&lines);
+    if titles.is_empty() {
+        bail!("no titles in the downloaded list");
+    }
+    let in_use = wiiu_text_in_use(Some(dir));
+    if gametdb_version(&in_use).is_some_and(|v| v >= version) || parse_gametdb(&in_use) == titles {
+        return Ok(None);
+    }
+
+    let path = dir.join(WIIU_PATH);
+    let folder = path.parent().unwrap_or(dir);
+    fs::create_dir_all(folder)?;
+    let mut file = tempfile::NamedTempFile::new_in(folder)?;
+    file.write_all(lines.as_bytes())?;
+    file.persist(&path)?;
+    Ok(Some(format!(
+        "{}.{}.{}",
+        &version[..4],
+        &version[4..6],
+        &version[6..8]
+    )))
 }
 
 /// Notes the line of each game in a downloaded DAT (its `game (` line, as GitHub counts lines):
@@ -397,7 +458,8 @@ mod tests {
         assert_eq!(updated.len(), 1);
         assert_eq!(updated[0].list, "Nintendo - Game Boy Advance");
         assert_eq!(updated[0].version, "2099.01.02");
-        assert_eq!(asked.borrow().len(), List::ALL.len());
+        // and GameTDB's Wii U list
+        assert_eq!(asked.borrow().len(), List::ALL.len() + 1);
         assert!(asked.borrow().iter().any(|(url, _)| {
             url.ends_with("/no-intro/Nintendo%20-%20Super%20Nintendo%20Entertainment%20System.dat")
         }));
@@ -462,6 +524,84 @@ mod tests {
         .unwrap();
     }
 
+    /// GameTDB's Wii U list as it comes: Windows line ends, a version that is the time it was
+    /// asked for
+    fn wiiu_list(version: &str, titles: &[(&str, &str)]) -> String {
+        let mut text = format!(
+            "TITLES = https://www.gametdb.com (type: WiiU language: EN version: {version})\r\n"
+        );
+        for (id, name) in titles {
+            text.push_str(&format!("{id} = {name}\r\n"));
+        }
+        text
+    }
+
+    #[test]
+    fn gametdb_s_wii_u_list_is_kept_when_its_titles_changed() {
+        let dir = tempfile::tempdir().unwrap();
+        let shipped: Vec<(String, String)> = super::super::WIIU_SHIPPED
+            .lines()
+            .skip(1)
+            .filter_map(|l| l.split_once(" = "))
+            .map(|(id, name)| (id.to_string(), name.to_string()))
+            .collect();
+        let shipped: Vec<(&str, &str)> = shipped
+            .iter()
+            .map(|(i, n)| (i.as_str(), n.as_str()))
+            .collect();
+        let only_wiiu = |text: String| {
+            move |url: &str, etag: Option<&str>| {
+                assert_eq!(etag, None, "GameTDB has no ETag");
+                Ok((url == GAMETDB_WIIU).then(|| Changed {
+                    text: text.clone(),
+                    etag: None,
+                }))
+            }
+        };
+
+        // the same titles at a later time: nothing to keep, nothing to say
+        let updated = update_lists(
+            dir.path(),
+            1_000_000,
+            only_wiiu(wiiu_list("20991231235959", &shipped)),
+        )
+        .unwrap();
+        assert!(updated.is_empty());
+        assert!(!dir.path().join(WIIU_PATH).exists());
+
+        // a new title: kept, said and used
+        let mut more = shipped.clone();
+        more.push(("ZZZE", "Zeta Test U"));
+        let updated = update_lists(
+            dir.path(),
+            1_000_000 + CHECK_EVERY,
+            only_wiiu(wiiu_list("20991231235959", &more)),
+        )
+        .unwrap();
+        assert_eq!(updated.len(), 1);
+        assert_eq!(updated[0].list, "GameTDB - Wii U");
+        assert_eq!(updated[0].version, "2099.12.31");
+        let kept = fs::read_to_string(dir.path().join(WIIU_PATH)).unwrap();
+        assert!(!kept.contains('\r') && kept.ends_with("ZZZE = Zeta Test U\n"));
+        let databases = Databases::load(Some(&dir.path().to_path_buf()));
+        assert_eq!(
+            super::super::wiiu_title(&databases.wiiu, "ZZZE").as_deref(),
+            Some("Zeta Test U")
+        );
+
+        // an older list, or one that isn't GameTDB's, changes nothing
+        for text in [
+            wiiu_list("20200101000000", &more[..3]),
+            "<html>busy</html>".to_string(),
+        ] {
+            let _ = update_lists(dir.path(), 1_000_000 + 2 * CHECK_EVERY, only_wiiu(text));
+            assert_eq!(
+                fs::read_to_string(dir.path().join(WIIU_PATH)).unwrap(),
+                kept
+            );
+        }
+    }
+
     #[test]
     fn an_older_list_or_a_failed_download_changes_nothing() {
         let dir = tempfile::tempdir().unwrap();
@@ -486,7 +626,7 @@ mod tests {
             Ok(None)
         })
         .unwrap();
-        assert_eq!(asked.get(), List::ALL.len());
+        assert_eq!(asked.get(), List::ALL.len() + 1);
 
         // a broken download isn't kept either
         let dir = tempfile::tempdir().unwrap();

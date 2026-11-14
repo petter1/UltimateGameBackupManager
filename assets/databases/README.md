@@ -64,8 +64,11 @@ is: one line per title with
 The first line (`TITLES = …`) names the list and its version. An ID is a title's product code
 (`AF6P`, the code in `WUP-P-AF6P`) or the code and the maker (`AF6P52`). The app names a Wii U
 title whose folder or file is called by its product code; vWii titles and forwarders carry a Wii
-or GameCube game's code (`WUP-N-RMCP`), which the Redump lists name. The app doesn't refresh this
-list itself yet; the script does.
+or GameCube game's code (`WUP-N-RMCP`), which the Redump lists name.
+
+The app refreshes this list at the same daily check as the others. GameTDB sends no ETag and
+dates its list with the time it was asked for, so the app downloads it at every check (about 80
+KB) and keeps it in `databases/gametdb/wiiu.txt` only when its titles differ from the list in use.
 
 | File | List |
 | --- | --- |

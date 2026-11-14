@@ -6,7 +6,7 @@
 //! against the Redump lists. The app ships them (`assets/databases/`, refreshed with
 //! `scripts/update-databases.py`) and asks libretro-database for newer ones once a day
 //! ([`check_for_updates`]); a newer list is kept in the data folder and used in place of the
-//! shipped one.
+//! shipped one. Wii U titles are named by GameTDB's list, refreshed the same way.
 
 mod update;
 
@@ -15,6 +15,7 @@ pub use update::{Updated, check_for_updates};
 use crate::library::Platform;
 use sha1::{Digest, Sha1};
 use std::{
+    borrow::Cow,
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
@@ -206,24 +207,31 @@ fn reload() {
     *ACTIVE.write().unwrap_or_else(PoisonError::into_inner) = databases;
 }
 
-/// One list for every [`List`]
-struct Databases([Database; List::ALL.len()]);
+/// One list for every [`List`], and GameTDB's Wii U titles
+struct Databases {
+    lists: [Database; List::ALL.len()],
+    /// GameTDB's names of Wii U titles, by GameTDB's ID: the product code ("AF6P", the eShop's
+    /// titles) or the product code and maker ("AF6P52")
+    wiiu: HashMap<Box<str>, Box<str>>,
+}
 
 impl Databases {
     /// The shipped lists, each replaced by the one in `downloaded` where that one is newer
     fn load(downloaded: Option<&PathBuf>) -> Self {
-        Self(List::ALL.map(|list| {
+        let lists = List::ALL.map(|list| {
             let shipped = Database::parse(list.shipped());
             downloaded
                 .and_then(|dir| fs::read_to_string(dir.join(list.path())).ok())
                 .map(|text| Database::parse(&text))
                 .filter(|db| !db.dumps.is_empty() && is_newer(&db.version, &shipped.version))
                 .unwrap_or(shipped)
-        }))
+        });
+        let wiiu = parse_gametdb(&wiiu_text_in_use(downloaded.map(PathBuf::as_path)));
+        Self { lists, wiiu }
     }
 
     fn get(&self, list: List) -> &Database {
-        &self.0[list as usize]
+        &self.lists[list as usize]
     }
 
     /// Looks a ROM up in the lists of its platform: by SHA-1, then CRC32, then serial
@@ -468,10 +476,29 @@ fn names_the_same_game(gametdb: &str, redump: &str) -> bool {
     words(gametdb).iter().all(|word| redump.contains(word))
 }
 
-/// GameTDB's names of Wii U titles (`assets/databases/gametdb/wiiu.txt`), by GameTDB's ID: the
-/// product code ("AF6P", the eShop's titles) or the product code and maker ("AF6P52")
-static WIIU_TITLES: LazyLock<HashMap<Box<str>, Box<str>>> =
-    LazyLock::new(|| parse_gametdb(include_str!("../assets/databases/gametdb/wiiu.txt")));
+/// GameTDB's list of Wii U titles the app was built with
+const WIIU_SHIPPED: &str = include_str!("../assets/databases/gametdb/wiiu.txt");
+
+/// The path of GameTDB's Wii U list below the folder of the databases
+const WIIU_PATH: &str = "gametdb/wiiu.txt";
+
+/// The version in the first line of a GameTDB list, the time it was made: "20261113093701" from
+/// `TITLES = https://www.gametdb.com (type: WiiU language: EN version: 20261113093701)`
+fn gametdb_version(text: &str) -> Option<&str> {
+    let header = text.lines().next()?.strip_prefix("TITLES = ")?;
+    let version = header.split_once("version: ")?.1.split_once(')')?.0;
+    (version.len() == 14 && version.bytes().all(|b| b.is_ascii_digit())).then_some(version)
+}
+
+/// The text of the Wii U list in use: the one downloaded into `downloaded` when it is newer than
+/// the shipped one
+fn wiiu_text_in_use(downloaded: Option<&Path>) -> Cow<'static, str> {
+    let shipped = gametdb_version(WIIU_SHIPPED).unwrap_or_default();
+    downloaded
+        .and_then(|dir| fs::read_to_string(dir.join(WIIU_PATH)).ok())
+        .filter(|text| gametdb_version(text).is_some_and(|v| v > shipped))
+        .map_or(Cow::Borrowed(WIIU_SHIPPED), Cow::Owned)
+}
 
 /// Lines of `ID = name` as GameTDB's `*tdb.txt` have them; the first line (`TITLES = …`) names
 /// the list
@@ -506,9 +533,10 @@ pub fn product_name(code: &str) -> Option<String> {
     if code.len() != 4 {
         return None;
     }
-    wiiu_title(&WIIU_TITLES, code)
-        .or_else(|| active().disc_by_game_id(Platform::Wii, code))
-        .or_else(|| active().disc_by_game_id(Platform::GameCube, code))
+    let databases = active();
+    wiiu_title(&databases.wiiu, code)
+        .or_else(|| databases.disc_by_game_id(Platform::Wii, code))
+        .or_else(|| databases.disc_by_game_id(Platform::GameCube, code))
 }
 
 /// The Redump name of the Wii or GameCube disc with this SHA-1 (of the whole disc), when it is a
