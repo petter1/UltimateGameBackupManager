@@ -4,9 +4,10 @@
 //! Box art of the ROMs the game databases know, from libretro's thumbnail server
 //! (`thumbnails.libretro.com/<list>/Named_Boxarts/<release>.png`), found by the release's name.
 //! Each picture is downloaded once, made smaller and kept as a JPEG in `covers/libretro/` in the
-//! data folder; a release the server has no picture of is asked for again after a month.
+//! data folder; a release the server has no picture of is asked for again after a month. The
+//! library shows them turned as a box seen at an angle, like the Wii and GameCube covers.
 
-use super::{LibraryItem, Platform};
+use super::{LibraryItem, Platform, box3d};
 use crate::{
     romdb::{self, Match},
     util::http,
@@ -16,7 +17,7 @@ use iced::widget;
 use image::{ImageFormat, codecs::jpeg::JpegEncoder, imageops::FilterType};
 use smol::stream::{self, Stream, StreamExt};
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeSet, HashMap},
     fs,
     io::Write,
     path::{Path, PathBuf},
@@ -295,62 +296,85 @@ fn release_of(item: &LibraryItem) -> Option<(Platform, &str)> {
     (found.how != Match::Serial).then_some((found.platform, found.release.as_str()))
 }
 
-/// Shows the box art kept in the data folder for the items that have none yet; reads no
-/// picture (the library loads them when it shows them)
-pub fn show_kept(data_dir: &Path, items: &mut [LibraryItem]) {
-    for item in items.iter_mut().filter(|item| item.icon.is_none()) {
-        if let Some((platform, release)) = release_of(item)
-            && let Some(path) = boxart_path(data_dir, platform, release)
-            && path.is_file()
-        {
-            item.icon = Some(widget::image::Handle::from_path(path));
+/// Gives the items of a newer scan the box art the older items show, so it isn't loaded again
+pub fn carry_over(old: &[LibraryItem], new: &mut [LibraryItem]) {
+    let shown: HashMap<(Platform, &str), &widget::image::Handle> = old
+        .iter()
+        .filter_map(|item| Some((release_of(item)?, item.icon.as_ref()?)))
+        .collect();
+    for item in new.iter_mut().filter(|item| item.icon.is_none()) {
+        if let Some(handle) = release_of(item).and_then(|release| shown.get(&release)) {
+            item.icon = Some((*handle).clone());
         }
     }
 }
 
-/// Shows the box art at `path` for every item of that release
-pub fn show(items: &mut [LibraryItem], platform: Platform, release: &str, path: &Path) {
+/// Shows a release's box art on every item of that release
+pub fn show(
+    items: &mut [LibraryItem],
+    platform: Platform,
+    release: &str,
+    handle: &widget::image::Handle,
+) {
     for item in items.iter_mut() {
         if item.icon.is_none() && release_of(item) == Some((platform, release)) {
-            item.icon = Some(widget::image::Handle::from_path(path));
+            item.icon = Some(handle.clone());
         }
     }
 }
 
-/// The releases of the items that show no box art yet, each once
-pub fn wanted(items: &[LibraryItem]) -> Vec<(Platform, String)> {
+/// The releases of the items that show no box art yet, each once; those kept in the data folder
+/// first, so that they are shown also when the server can't be reached
+pub fn wanted(data_dir: &Path, items: &[LibraryItem]) -> Vec<(Platform, String)> {
     let releases: BTreeSet<(Platform, String)> = items
         .iter()
         .filter(|item| item.icon.is_none())
         .filter_map(release_of)
         .map(|(platform, release)| (platform, release.to_string()))
         .collect();
-    releases.into_iter().collect()
+    let (kept, other): (Vec<_>, Vec<_>) = releases.into_iter().partition(|(platform, release)| {
+        boxart_path(data_dir, *platform, release).is_some_and(|path| path.is_file())
+    });
+    kept.into_iter().chain(other).collect()
 }
 
-/// Downloads the box art of `releases` one after the other and gives each one that is kept now;
-/// stops at the first time the server doesn't answer (no network), so the next scan tries again
-pub fn download(
+/// A kept box art turned into a box seen at an angle ([`box3d`]), ready to be shown
+fn turned(path: &Path) -> Result<widget::image::Handle> {
+    let turned = box3d::render(&image::open(path)?.to_rgb8());
+    Ok(widget::image::Handle::from_rgba(
+        turned.width(),
+        turned.height(),
+        turned.into_raw(),
+    ))
+}
+
+/// Loads the box art of `releases` one after the other, downloading what isn't kept yet, and
+/// gives each one turned as a box; stops at the first time the server doesn't answer (no
+/// network), so the next scan tries again
+pub fn load(
     data_dir: &'static Path,
     releases: Vec<(Platform, String)>,
-) -> impl Stream<Item = (Platform, String, PathBuf)> {
+) -> impl Stream<Item = (Platform, String, widget::image::Handle)> {
     stream::iter(releases)
         .then(move |(platform, release)| async move {
-            let fetched = smol::unblock({
+            let shown = smol::unblock({
                 let release = release.clone();
-                move || fetch_boxart(data_dir, platform, &release)
+                move || match fetch_boxart(data_dir, platform, &release)? {
+                    Fetched::Kept(path) => turned(&path).map(Some),
+                    Fetched::Missing => Ok(None),
+                }
             })
             .await;
-            (platform, release, fetched)
+            (platform, release, shown)
         })
-        .take_while(|(_, _, fetched)| {
-            if let Err(e) = fetched {
+        .take_while(|(_, _, shown)| {
+            if let Err(e) = shown {
                 eprintln!("WARNING: box art: {e:#}");
             }
-            fetched.is_ok()
+            shown.is_ok()
         })
-        .filter_map(|(platform, release, fetched)| match fetched {
-            Ok(Fetched::Kept(path)) => Some((platform, release, path)),
+        .filter_map(|(platform, release, shown)| match shown {
+            Ok(Some(handle)) => Some((platform, release, handle)),
             _ => None,
         })
 }

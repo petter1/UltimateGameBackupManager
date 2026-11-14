@@ -10,6 +10,7 @@ use crate::{
 use iced::widget::image;
 use smol::{Timer, future::FutureExt};
 pub mod artwork;
+mod box3d;
 mod sevenzip;
 
 use std::{

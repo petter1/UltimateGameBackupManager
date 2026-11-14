@@ -103,7 +103,7 @@ pub enum Message {
     RemoveRomSource(PathBuf),
     CopyToDrive(PathBuf),
     /// a release's box art was downloaded: the list's platform, the release, where it is kept
-    GotBoxart(Platform, String, PathBuf),
+    GotBoxart(Platform, String, iced::widget::image::Handle),
     /// the release's entry in libretro-database: the list's platform and the release's name
     OpenRelease(Platform, String),
     OpenLibraryInfo(PathBuf),
