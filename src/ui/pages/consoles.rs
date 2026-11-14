@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use crate::{
-    consoles::{ConsoleEntry, Drive, InstalledTitle, TitlesState, VCINJECT_LINK_VERSION},
+    consoles::{
+        ConsoleEntry, Drive, InstalledTitle, TitleAction, TitlesState, VCINJECT_LINK_VERSION,
+    },
     link::protocol::{Console, n3ds},
     message::Message,
     state::AppState,
@@ -167,8 +169,14 @@ fn console_card(entry: &ConsoleEntry) -> Element<'_, Message> {
         row![
             icon_alert_triangle(),
             text(format!(
-                "vcinject Link is older than version {VCINJECT_LINK_VERSION}: update it"
-            ))
+                "vcinject Link is older than version {VCINJECT_LINK_VERSION}"
+            )),
+            entry.online.then(|| {
+                my_button()
+                    .icon(Icon::Download)
+                    .label("Update")
+                    .on_press(Message::UpdateLink(entry.addr))
+            }),
         ]
         .spacing(5)
         .align_y(Alignment::Center)
@@ -224,7 +232,7 @@ fn console_titles<'a>(
         TitlesState::Loaded(titles) => scrollable(
             titles
                 .iter()
-                .map(title_row)
+                .map(|title| title_row(title, entry))
                 .collect::<Column<'_, _>>()
                 .spacing(8)
                 .padding(padding::all(10).right(20))
@@ -236,7 +244,7 @@ fn console_titles<'a>(
     column![titlebar, column![body].padding(padding::horizontal(10))].into()
 }
 
-fn title_row(title: &InstalledTitle) -> Element<'_, Message> {
+fn title_row<'a>(title: &'a InstalledTitle, entry: &'a ConsoleEntry) -> Element<'a, Message> {
     let icon: Element<'_, Message> = match &title.icon {
         Some(handle) => image(handle).width(48).height(48).into(),
         None => space().width(48).height(48).into(),
@@ -254,9 +262,37 @@ fn title_row(title: &InstalledTitle) -> Element<'_, Message> {
         details.push(format!("v{}", title.title.version));
     }
 
+    // only while the console answers; the remembered list of a switched-off one only shows
+    let offered = |action: TitleAction| entry.online && action.offered(&title.title);
+    let launch = offered(TitleAction::Launch).then(|| {
+        my_button()
+            .icon(Icon::Play)
+            .label("Start")
+            .on_press_with(|| {
+                Message::TitleAction(
+                    entry.addr,
+                    TitleAction::Launch,
+                    title.title.clone(),
+                    title.name.clone(),
+                )
+            })
+    });
+    let delete = offered(TitleAction::Delete).then(|| {
+        my_button()
+            .icon(Icon::Trash)
+            .label("Delete")
+            .kind(MyButtonKind::Danger)
+            .on_press_with(|| {
+                Message::AskDeleteTitle(entry.addr, title.title.clone(), title.name.clone())
+            })
+    });
+
     row![
         icon,
-        column![text(&title.name), text(details.join(" · ")).size(12)].spacing(2)
+        column![text(&title.name), text(details.join(" · ")).size(12)].spacing(2),
+        space::horizontal(),
+        launch,
+        delete,
     ]
     .spacing(10)
     .align_y(Alignment::Center)

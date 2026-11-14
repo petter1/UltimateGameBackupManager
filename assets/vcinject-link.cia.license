@@ -1,0 +1,7 @@
+SPDX-FileCopyrightText: 2026 Yanik Fuchs <yanik.fuchs@me.com>
+SPDX-License-Identifier: MIT
+
+vcinject Link 13, the 3DS companion app of vcinject (https://github.com/petter1/vcinject),
+copied from src/vcinject/data/vcinject-link.cia at vcinject commit 5a01743. MIT licensed, see
+vcinject's LICENSE. Built from companion/ there with scripts/build-companion.sh; replace it
+together with VCINJECT_LINK_VERSION in src/consoles.rs.

@@ -288,7 +288,7 @@ impl Archive {
 
 pub const TITLE_RECORD_SIZE: usize = 40;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Title {
     pub id: u64,
     pub size: u64,

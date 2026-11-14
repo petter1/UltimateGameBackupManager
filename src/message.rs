@@ -3,11 +3,11 @@
 
 use crate::{
     config::{Config, message::ConfigMessage},
-    consoles::{ConsoleEntry, Drive, InstalledTitle},
+    consoles::{ConsoleEntry, Drive, InstalledTitle, TitleAction},
     games::{ImportEntry, game::Game, games_state::GamesState},
     homebrew::{homebrew_app::HomebrewApp, homebrew_state::HomebrewState},
     library::{LibraryItem, Platform},
-    link::discovery::Found,
+    link::{discovery::Found, protocol::Title},
     notifications::notification::Notification,
     osc::{osc_app::OscApp, osc_state::OscState},
     romdb,
@@ -20,6 +20,8 @@ use crate::{
 use semver::Version;
 use std::{ffi::OsString, net::SocketAddr, path::PathBuf};
 use wii_disc_info::game_id::GameID;
+
+type InstalledTitles = Vec<InstalledTitle>;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -86,8 +88,9 @@ pub enum Message {
     PickGameToConvert,
     ConvertGame(PathBuf, PathBuf),
     GotUpdate(Version),
-    GotKnownConsoles(Vec<ConsoleEntry>),
+    GotKnownConsoles(Vec<(ConsoleEntry, InstalledTitles)>),
     SearchConsoles,
+    WatchConsoles,
     GotConsoles(Result<Vec<Found>, String>),
     OpenConsole(SocketAddr),
     LoadConsoleTitles(SocketAddr),
@@ -102,6 +105,11 @@ pub enum Message {
     AddRomSource(PathBuf),
     RemoveRomSource(PathBuf),
     CopyToDrive(PathBuf),
+    InstallOnConsole(PathBuf, SocketAddr),
+    UpdateLink(SocketAddr),
+    /// Asks before deleting: the title and its name
+    AskDeleteTitle(SocketAddr, Title, String),
+    TitleAction(SocketAddr, TitleAction, Title, String),
     CopyShownToDrive,
     GotDrives(Vec<Drive>),
     OpenDrive(PathBuf, Page),

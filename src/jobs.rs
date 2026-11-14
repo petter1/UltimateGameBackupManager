@@ -6,16 +6,19 @@
 
 use crate::{
     config::Config,
+    consoles::{TitleAction, install_cia, title_action, update_link},
     games::{
         ImportEntry, calc_sha1::calc_sha1, convert::convert_game, export::export_game, game::Game,
         import::import_game, scrub::scrub_game,
     },
+    link::protocol::Title,
     tasks::{Resource, TaskControl, WorkerEvent},
     util::drive_state::DriveState,
 };
 use smol::stream::{Stream, StreamExt};
 use std::{
     ffi::OsStr,
+    net::SocketAddr,
     path::{Path, PathBuf},
 };
 
@@ -43,6 +46,28 @@ pub enum Job {
     Scrub { game: Game, mount_point: PathBuf },
     /// Checks a game's checksum against the known good dumps; only reads.
     Hash { game: Game, mount_point: PathBuf },
+    /// A CIA on a 3DS over vcinject Link; `console` is its name in My Consoles.
+    ///
+    /// `addr` is where the console was when the task was added. Waiting tasks keep it: when the
+    /// console gets another address meanwhile (a new DHCP lease), the task fails with "Could
+    /// not connect", and Retry tries the same address again, so the CIA is installed anew from
+    /// the library once the console shows up under its new address.
+    Install {
+        cia: PathBuf,
+        name: String,
+        addr: SocketAddr,
+        console: String,
+    },
+    /// The vcinject Link this app ships, over an older one; it restarts afterwards.
+    UpdateLink { addr: SocketAddr, console: String },
+    /// Deletes or starts an installed title; `name` is the title's.
+    Title {
+        action: TitleAction,
+        title: Title,
+        name: String,
+        addr: SocketAddr,
+        console: String,
+    },
 }
 
 /// The folder a file is in, standing for its drive: the task manager doesn't know mount points
@@ -65,6 +90,20 @@ impl Job {
             Self::Export { game, .. } => format!("Export {}", game.title()),
             Self::Scrub { game, .. } => format!("Scrub {}", game.title()),
             Self::Hash { game, .. } => format!("Check the hash of {}", game.title()),
+            Self::Install { name, console, .. } => format!("Install {name} on {console}"),
+            Self::UpdateLink { console, .. } => format!("Update vcinject Link on {console}"),
+            Self::Title {
+                action: TitleAction::Delete,
+                name,
+                console,
+                ..
+            } => format!("Delete {name} from {console}"),
+            Self::Title {
+                action: TitleAction::Launch,
+                name,
+                console,
+                ..
+            } => format!("Start {name} on {console}"),
         }
     }
 
@@ -89,6 +128,10 @@ impl Job {
             Self::Scrub { mount_point, .. } | Self::Hash { mount_point, .. } => {
                 vec![Resource::Drive(mount_point.clone())]
             }
+            // the console is far slower than any disk, so reading the CIA doesn't wait for one
+            Self::Install { console, .. }
+            | Self::UpdateLink { console, .. }
+            | Self::Title { console, .. } => vec![Resource::Console(console.clone())],
         }
     }
 
@@ -97,7 +140,46 @@ impl Job {
         match self {
             Self::Import { config, .. } => Some(config.mount_point()),
             Self::Scrub { mount_point, .. } => Some(mount_point),
-            Self::Convert { .. } | Self::Export { .. } | Self::Hash { .. } => None,
+            Self::Convert { .. }
+            | Self::Export { .. }
+            | Self::Hash { .. }
+            | Self::Install { .. }
+            | Self::UpdateLink { .. }
+            | Self::Title { .. } => None,
+        }
+    }
+
+    /// Whether the task may be paused. Not an install: vcinject Link waits for the next bytes
+    /// without a timeout and without running its main loop, so the 3DS would look hung and
+    /// couldn't be left with START or HOME for as long as the pause lasts.
+    pub fn can_pause(&self) -> bool {
+        !matches!(
+            self,
+            Self::Install { .. } | Self::UpdateLink { .. } | Self::Title { .. }
+        )
+    }
+
+    /// The console the job talks to while it runs.
+    pub fn console(&self) -> Option<SocketAddr> {
+        match self {
+            Self::Install { addr, .. }
+            | Self::UpdateLink { addr, .. }
+            | Self::Title { addr, .. } => Some(*addr),
+            _ => None,
+        }
+    }
+
+    /// The console whose titles change when the job is done.
+    pub fn changes_titles_on(&self) -> Option<SocketAddr> {
+        match self {
+            Self::Install { addr, .. }
+            | Self::Title {
+                action: TitleAction::Delete,
+                addr,
+                ..
+            } => Some(*addr),
+            // vcinject Link restarts after an update, and a started title ends it
+            _ => None,
         }
     }
 
@@ -120,6 +202,17 @@ impl Job {
             Self::Export { game, out_path, .. } => export_game(game, out_path, control).boxed(),
             Self::Scrub { game, .. } => scrub_game(game, control).boxed(),
             Self::Hash { game, .. } => calc_sha1(game, control).boxed(),
+            Self::Install {
+                cia, name, addr, ..
+            } => install_cia(cia, name, addr, control).boxed(),
+            Self::UpdateLink { addr, .. } => update_link(addr, control).boxed(),
+            Self::Title {
+                action,
+                title,
+                name,
+                addr,
+                ..
+            } => title_action(action, title, name, addr).boxed(),
         }
     }
 }

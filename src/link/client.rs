@@ -102,7 +102,7 @@ impl Link {
         location: u8,
         package: impl Read,
         size: u64,
-        on_progress: impl FnMut(u64),
+        on_progress: impl FnMut(u64) -> io::Result<()>,
     ) -> Result<()> {
         let length = u32::try_from(size + 1).context("The package is larger than 4 GiB")?;
         let mut header = command::INSTALL_LEGACY.to_le_bytes().to_vec();
@@ -118,7 +118,7 @@ impl Link {
         location: u8,
         package: impl Read,
         size: u64,
-        on_progress: impl FnMut(u64),
+        on_progress: impl FnMut(u64) -> io::Result<()>,
     ) -> Result<()> {
         let mut params = vec![location];
         params.extend_from_slice(&size.to_le_bytes());
@@ -135,7 +135,10 @@ impl Link {
         header: &[u8],
         mut data: impl Read,
         size: u64,
-        mut on_progress: impl FnMut(u64),
+        // called with the bytes sent so far before each chunk; failing stops the stream, e.g.
+        // when the user cancels. Not called after the last chunk: once every byte is sent, the
+        // console finishes the install anyway, so a cancel then would only hide that.
+        mut on_progress: impl FnMut(u64) -> io::Result<()>,
         what: &str,
     ) -> Result<()> {
         let result = (|| {
@@ -144,15 +147,16 @@ impl Link {
             let mut buf = vec![0; STREAM_CHUNK];
             let mut sent = 0;
             while sent < size {
+                // before the chunk, not after it: a stop after the last chunk would come too
+                // late, the console would finish the install
+                on_progress(sent)?;
                 let n = data.read(&mut buf[..STREAM_CHUNK.min((size - sent) as usize)])?;
                 if n == 0 {
                     return Err(io::Error::from(io::ErrorKind::UnexpectedEof).into());
                 }
                 self.stream.write_all(&buf[..n])?;
                 sent += n as u64;
-                on_progress(sent);
             }
-
             self.stream.set_read_timeout(Some(INSTALL_TIMEOUT))?;
             let answer = read_answer(&mut self.stream);
             self.stream.set_read_timeout(Some(IO_TIMEOUT))?;
@@ -230,7 +234,10 @@ mod tests {
                 let command = u32::from_le_bytes(header[..4].try_into().unwrap());
                 let size = u32::from_le_bytes(header[4..].try_into().unwrap());
                 let mut payload = vec![0; size as usize];
-                stream.read_exact(&mut payload).unwrap();
+                // a client that stops an install part way closes the connection
+                if stream.read_exact(&mut payload).is_err() {
+                    return;
+                }
 
                 let (result, answer): (u32, Vec<u8>) = match command {
                     command::INFO => (0, b"app=vcinject-link\nversion=13\n".to_vec()),
@@ -270,14 +277,39 @@ mod tests {
         link.note("hello").unwrap();
         let cia = [1, 2, 3];
         let mut progress = Vec::new();
-        link.install_legacy(n3ds::LOCATION_SD, &cia[..], 3, |sent| progress.push(sent))
-            .unwrap();
-        assert_eq!(progress, vec![3]);
+        link.install_legacy(n3ds::LOCATION_SD, &cia[..], 3, |sent| {
+            progress.push(sent);
+            Ok(())
+        })
+        .unwrap();
+        // asked before the only chunk, not after it: by then the console has the whole CIA
+        assert_eq!(progress, vec![0]);
 
         let error = link.progress(1, 2, "x").unwrap_err().to_string();
         assert!(error.contains("too old"), "{error}");
 
         // the connection is still usable after an error
         link.note("still there").unwrap();
+    }
+
+    #[test]
+    fn a_stopped_install_fails_before_the_last_chunk() {
+        let mut link = Link::connect(fake_companion()).unwrap();
+        let cia = vec![0; STREAM_CHUNK * 2];
+        let mut asked = Vec::new();
+
+        let error = link
+            .install_legacy(n3ds::LOCATION_SD, &cia[..], cia.len() as u64, |sent| {
+                asked.push(sent);
+                if sent > 0 {
+                    Err(io::Error::other("cancelled"))
+                } else {
+                    Ok(())
+                }
+            })
+            .unwrap_err();
+
+        assert!(error.to_string().contains("cancelled"), "{error}");
+        assert_eq!(asked, vec![0, STREAM_CHUNK as u64]);
     }
 }

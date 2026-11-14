@@ -11,8 +11,8 @@ use crate::{
             task_bar::task_bar,
         },
         modals::{
-            Modal, confirm_scub::confirm_scrub, delete_dir::delete_dir, game_info::game_info,
-            homebrew_app_info::homebrew_app_info, osc_app_info::osc_app_info,
+            Modal, confirm_scub::confirm_scrub, delete_dir::delete_dir, delete_title::delete_title,
+            game_info::game_info, homebrew_app_info::homebrew_app_info, osc_app_info::osc_app_info,
         },
         pages::{
             Page, about::about, consoles::consoles, games::games, homebrew_apps::homebrew_apps,
@@ -62,6 +62,9 @@ pub fn view(state: &AppState) -> Element<'_, Message> {
                     Modal::OscAppInfo(app) => osc_app_info(app),
                     Modal::DeleteDir(path) => delete_dir(path),
                     Modal::ConfirmScrub(game) => confirm_scrub(game),
+                    Modal::DeleteTitle(addr, title, name) => {
+                        delete_title(*addr, title, name, state)
+                    }
                 })
                 .center(Length::Fill)
                 .style(|theme: &Theme| container::Style {

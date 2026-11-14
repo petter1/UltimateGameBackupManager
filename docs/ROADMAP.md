@@ -45,6 +45,16 @@ each item is ticked off here (and gets its test log entry) when done.
 5. **M1c, copy all to drive** (#41): in the library search a small Wii or GameCube game that
    isn't on WiiGames, "Copy all to drive" → one import task; search one that is there → the
    button is gone. Test log entry.
+6. **M1, install on the 3DS** (branch `claude/m1-3ds-install-and-consoles`, before merging):
+   with "petter1" running vcinject Link, open the Games page without visiting My Consoles; switch
+   the 3DS on afterwards: it must show up within about 15 seconds. Install a CIA from the library
+   (progress on the computer and on the 3DS; installs offer no Pause, because vcinject Link would
+   wait without a timeout and the 3DS would look hung), cancel a second one halfway (it must not
+   show up on the 3DS afterwards), and check that the title list is read again afterwards. In
+   the title list, start a game (vcinject Link ends, the game starts) and delete one (asked
+   first; gone from the list afterwards). With an older vcinject Link (e.g. 12), "Update" on the
+   console's card installs version 13 and restarts it. Quit, switch the 3DS off, start again:
+   the library still marks its titles as on "petter1". Test log entry.
 8. ~~**M2, game databases** (#48, #53 and #56 on top of them)~~: done 2026-11-12/13 on Linux
    with the real collection (gamestation, HFS+ mounted read-only; the maintainer agreed that this
    counts in place of the Mac), see the test log. #56 named 14 hacks after other games; fixed
@@ -194,9 +204,22 @@ once. The same way installs any CIA on a console without vcinject Link. And **in
 online 3DS at once**, not one console per click.
 
 - "Install" on a CIA in the library: choose the 3DS; it runs as a task (M1a), with progress on the
-  computer and on the 3DS.
-- Delete and launch titles from the console's title list.
-- Offer the update of vcinject Link when it is older than the app expects.
+  computer and on the 3DS. *Built, waiting for the Mac* (`claude/m1-3ds-install-and-consoles`):
+  one button per online 3DS, the console's connection is its own task resource.
+- Consoles are found in the background on every page (a light discovery every 15 seconds), and
+  what is installed on a console is remembered in `consoles.json`, so the library shows it also
+  while the console is off. *Built, same branch.*
+- Delete and launch titles from the console's title list. *Built, same branch*: "Start" and
+  "Delete" (asks first) on each title while the console is online, as tasks on the console's
+  connection, so they wait for a running install. Not offered for vcinject Link itself, and a
+  title on the game card can only be started.
+- Offer the update of vcinject Link when it is older than the app expects. *Built, same branch*:
+  "Update" on the console's card installs the vcinject Link the app ships
+  (`assets/vcinject-link.cia`, from vcinject) over the running one and restarts it, as vcinject
+  does.
+- A waiting install keeps the address the console had when it was added. When the console gets
+  another one meanwhile (a new DHCP lease), the task fails with "Could not connect"; installing
+  the CIA again from the library uses the new address. Rare, and accepted (2026-11-09).
 
 ### M1c · Copy many games to a drive (S)
 

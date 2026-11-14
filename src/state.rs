@@ -36,10 +36,13 @@ use std::{
     collections::HashMap,
     ffi::OsStr,
     io::SeekFrom,
+    net::SocketAddr,
     path::{Path, PathBuf},
 };
 use wii_disc_info::game_id::GameID;
 use wiiload::WIILOAD_PORT;
+
+const CONSOLE_WATCH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(15);
 
 pub struct AppState {
     pub data_dir: &'static Path,
@@ -123,6 +126,8 @@ impl AppState {
                 }
             }),
             time::every(milliseconds(500)).map(|_| Message::ToggleAnimationState),
+            // consoles are found whenever they come online, on any page
+            time::every(CONSOLE_WATCH_INTERVAL).map(|_| Message::WatchConsoles),
         ])
     }
 
@@ -320,6 +325,24 @@ impl AppState {
                     .get(&task.id())
                     .is_some_and(|job| job.scrubs(game_dir))
         })
+    }
+
+    /// A console's name in My Consoles
+    pub fn console_label(&self, addr: SocketAddr) -> Option<String> {
+        self.consoles
+            .entries
+            .iter()
+            .find(|entry| entry.addr == addr)
+            .map(|entry| entry.label.clone())
+    }
+
+    /// Consoles a running task is working with; vcinject Link may not answer a search meanwhile.
+    pub fn busy_consoles(&self) -> Vec<SocketAddr> {
+        self.tasks
+            .iter()
+            .filter(|task| task.state().is_active())
+            .filter_map(|task| self.jobs.get(&task.id())?.console())
+            .collect()
     }
 
     /// Removes the finished tasks and their jobs.
