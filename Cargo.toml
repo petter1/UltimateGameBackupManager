@@ -66,7 +66,7 @@ iced = { version = "0.14", default-features = false, features = [
 ] }
 iced_palace = "0.14"
 iced_aw = { version = "0.14", default-features = false, features = ["spinner"] }
-image = { version = "0.25", default-features = false, features = ["png"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 lucide-icons = { version = "1", features = ["iced"] }
 smol = "2"
 serde = { version = "1", features = ["derive"] }
