@@ -179,6 +179,11 @@ errors", a search field, "Open log file". Works on the Mac (2026-10-31), the sea
 yet. Still open: the source (task, console, drive) with a link to it, grouping different errors
 of one task, log levels with debug lines, export.
 
+System notifications (#22, 2026-10-31): `notify-rust` in
+`src/util/system_notification.rs`; a task done or failed and an update ready, only while the
+window is in the background, setting "System notifications". "A console came online" follows
+with the background discovery of #11. To try on the Mac from the `.app` (name and icon).
+
 **From ps5upload** (compared 2026-11-14): *Bug Report* gathers the app's and the consoles' logs of
 a chosen time into one `.zip`, with addresses, serial numbers and keys removed, ready to post. Here
 it would be the Messages page's export, with the log file, the Link log and the paths of the ROM

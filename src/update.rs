@@ -300,11 +300,14 @@ impl AppState {
                 if let Some(task) = self.tasks.get(id) {
                     match task.state() {
                         TaskState::Done(message) => {
+                            self.notify_system("Task done", message);
                             self.notifications.push(Notification::success(message));
                         }
-                        TaskState::Failed(reason) => self
-                            .notifications
-                            .push(Notification::error(format!("{}: {reason}", task.title()))),
+                        TaskState::Failed(reason) => {
+                            let text = format!("{}: {reason}", task.title());
+                            self.notify_system("Task failed", &text);
+                            self.notifications.push(Notification::error(text));
+                        }
                         _ => {}
                     }
                 }
@@ -778,7 +781,15 @@ impl AppState {
                 .then(|copy| Task::batch(bulk_copy_messages(copy).into_iter().map(Task::done)))
             }
             Message::GotUpdate(new_version) => {
+                self.notify_system(
+                    "Update ready",
+                    format!("Version {new_version} is available"),
+                );
                 self.new_version = Some(new_version);
+                Task::none()
+            }
+            Message::WindowFocused(focused) => {
+                self.window_focused = focused;
                 Task::none()
             }
             Message::FileDropped(path) => match self.current_page {

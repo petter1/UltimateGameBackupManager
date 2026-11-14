@@ -107,6 +107,16 @@ pub fn settings(config: &Config) -> Element<'_, ConfigMessage> {
                 ConfigMessage::SetTxtCodesSource
             ),
             setting(
+                "System notifications",
+                Icon::Bell,
+                [
+                    (true, "When a task ends or an update is ready while the window is in the background"),
+                    (false, "Off"),
+                ],
+                config.system_notifications(),
+                ConfigMessage::SetSystemNotifications
+            ),
+            setting(
                 "Theme",
                 Icon::SunMoon,
                 ThemePreference::iter().map(|l| (l, l.into())),

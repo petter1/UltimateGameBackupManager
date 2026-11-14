@@ -61,6 +61,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Queen"), also archives named with a game ID. A Wii U inject or forwarder that is only a title
   ID ("0005000010104857") takes its name from the folders above it ("the legend of zelda ocarina
   of time usa"), unless they are a platform's folder or a pack of several titles.
+- 🔔 While the window is in the background, the system tells you when a task is done or failed
+  and when an update is ready (macOS Notification Center, Windows toasts, Linux notifications).
+  Can be turned off in the settings.
 - 🗜️ RAR and 7z archives are looked into with 7-Zip when it is installed (`7zz`, `7z` or `7za`;
   also found in Homebrew's folders on macOS and in `Program Files` on Windows): one with a single
   ROM in it is read like that ROM, and a Wii U title of a pack that is only a title ID takes the
