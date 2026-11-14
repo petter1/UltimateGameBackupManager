@@ -4,7 +4,7 @@
 use crate::{
     library::{ItemId, ItemKind, LibraryItem, Platform, RomInfo},
     message::Message,
-    romdb::Match,
+    romdb::{self, Match},
     state::AppState,
     ui::components::{
         my_button::{MyButtonKind, my_button},
@@ -13,9 +13,10 @@ use crate::{
     },
 };
 use iced::{
-    Alignment, Element, Length, padding,
+    Alignment, Element, Length, Theme, padding,
     widget::{
-        Column, Row, column, container, image, row, scrollable, space, text, text_input, tooltip,
+        Column, Row, button, column, container, image, row, scrollable, space, text, text_input,
+        tooltip,
     },
 };
 use lucide_icons::Icon;
@@ -261,12 +262,20 @@ fn item_row<'a>(item: &'a LibraryItem, state: &'a AppState) -> Element<'a, Messa
     };
 
     let details: Element<'_, Message> = match &item.rom {
-        Some(rom) => tooltip(
-            text(details.join(" · ")).size(12),
-            my_card(text(rom_checksums(item, rom)).size(12)),
-            tooltip::Position::Bottom,
-        )
-        .into(),
+        Some(rom) => {
+            let details = tooltip(
+                text(details.join(" · ")).size(12),
+                my_card(text(rom_checksums(item, rom)).size(12)),
+                tooltip::Position::Bottom,
+            );
+            match release_link(rom) {
+                Some(link) => row![details, link]
+                    .spacing(8)
+                    .align_y(Alignment::Center)
+                    .into(),
+                None => details.into(),
+            }
+        }
         None => text(details.join(" · ")).size(12).into(),
     };
 
@@ -295,6 +304,42 @@ fn rom_verdict(rom: &RomInfo) -> String {
         },
         None => "not in No-Intro".to_string(),
     }
+}
+
+/// A link to the release's entry in libretro-database, for a ROM that is a known dump
+fn release_link(rom: &RomInfo) -> Option<Element<'_, Message>> {
+    let found = rom.identified.as_ref()?;
+    if found.how == Match::Serial || !romdb::has_release_page(found.platform) {
+        return None;
+    }
+
+    fn style(theme: &Theme, status: button::Status) -> button::Style {
+        button::Style {
+            text_color: theme.palette().primary,
+            ..button::text(theme, status)
+        }
+    }
+
+    let link = button(
+        row![
+            Icon::ExternalLink.widget().size(12),
+            text("libretro-database").size(12)
+        ]
+        .spacing(4)
+        .align_y(Alignment::Center),
+    )
+    .style(style)
+    .padding(0)
+    .on_press_with(|| Message::OpenRelease(found.platform, found.release.clone()));
+
+    Some(
+        tooltip(
+            link,
+            my_card(text("The release's entry, with its checksums and serial").size(12)),
+            tooltip::Position::Bottom,
+        )
+        .into(),
+    )
 }
 
 /// The file, checksums and serial of a ROM, for the tooltip

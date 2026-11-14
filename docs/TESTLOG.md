@@ -43,6 +43,19 @@ console, a real drive or a real collection can show.
 
 ## Entries
 
+### 2026-11-13 · gamestation · link to the release's entry in libretro-database
+
+| | |
+| --- | --- |
+| **Device** | gamestation, USB HDD, HFS+, mounted read-only on Linux |
+| **What** | The line of each game in the DATs, for the link to a release's entry (`claude/m2-release-link`) |
+| **Who** | Claude, on the maintainer's Linux computer |
+| **When** | 2026-11-13, Arch Linux, debug build |
+| **How** | Portable build with `gamestation/Games` as the ROM source, started with a network so the check for newer lists ran; the lines in `databases/*/…-lines.tsv` of every ROM in `library.json` compared with the DATs on libretro-database's `master` |
+| **Why** | The game info should link to the release in libretro-database, as vcinject does |
+| **Result** | ✅ All eight `-lines.tsv` written at the first check; for all 125 ROMs identified by checksum (101 GBA, 14 GBC, 8 GB, 1 SNES, 1 NES) the noted line is the release's `game (` line, its `name` the release. The click in the window (opening the browser) wasn't tried: no input tools on Wayland. |
+| **Follow-up** | Click the link in the window, on the Mac or Linux |
+
 ### 2026-11-13 · gamestation · Wii U names from GameTDB
 
 | | |

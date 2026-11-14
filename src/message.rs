@@ -102,6 +102,8 @@ pub enum Message {
     AddRomSource(PathBuf),
     RemoveRomSource(PathBuf),
     CopyToDrive(PathBuf),
+    /// the release's entry in libretro-database: the list's platform and the release's name
+    OpenRelease(Platform, String),
     CopyShownToDrive,
     GotDrives(Vec<Drive>),
     OpenDrive(PathBuf, Page),

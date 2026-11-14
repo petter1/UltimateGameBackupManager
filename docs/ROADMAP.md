@@ -50,6 +50,11 @@ each item is ticked off here (and gets its test log entry) when done.
    counts in place of the Mac), see the test log. #56 named 14 hacks after other games; fixed
    before merging. Found on the way, for later in M2: zips renamed to `.gba` are read as raw ROMs
    (9 files, #59), and `.7z` isn't read yet (read through 7-Zip since the fifth M2 pull request).
+9. **M2, link to the release's entry** (#66, merged only after this test): with the real
+   collection and a network, start the app once (the check for newer lists notes the lines), then
+   click "libretro-database" next to a good dump, e.g. a GBA game: the browser opens the DAT on
+   GitHub at that release's `game (` block. A NES ROM has no link. Test log entry; the macOS CI
+   runner was missing for this pull request (2026-11-13), so this test is its macOS run too.
 
 **From ps5upload** (compared 2026-11-14): its tests have four layers, cheapest first, and the
 real-hardware one is one command (`npm run smoke:hardware`): it sends files of several sizes to a
@@ -318,6 +323,18 @@ collection: 109 of 110 named, `WUP-P-HITS` isn't in GameTDB. 3DS: the CIAs have 
 the SMDH, and there are no cartridge dumps in the collection, so GameTDB's 3DS list waits until
 cartridge dumps (`.3ds`, `.cci`) are read. Still open: the app refreshing GameTDB's list, the
 link to the release's entry, artwork, descriptions.
+
+**Seventh pull request** (2026-11-13, branch `claude/m2-release-link`): the link to the release's
+entry. A ROM identified by checksum shows "libretro-database" next to "good dump"; it opens the
+release in its DAT on GitHub (libretro has no game pages; vcinject links the same way). The line
+can't be in the shipped lists (every new game upstream would move all lines after it, and a list
+update would change the whole file), so the check for newer lists notes the line of each game
+(`databases/<source>/<list>-lines.tsv`) whenever it downloads a DAT, and downloads a DAT again
+when that file is missing; until then the link opens the DAT at the top. No link for NES ROMs:
+GitHub doesn't show that DAT (3 MB). On the real collection the line was right for all 125
+identified ROMs. Still open: the app refreshing GameTDB's list, artwork, descriptions; a link
+for Wii and GameCube discs (the game info has the Redump name only by game ID, without disc and
+revision).
 
 ### M2b · Explain and repair bad dumps (M) – after M2
 

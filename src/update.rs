@@ -730,6 +730,12 @@ impl AppState {
                 self.config.remove_rom_source(&path).map(Message::Config),
                 self.update(Message::ScanLibrary),
             ]),
+            Message::OpenRelease(platform, release) => {
+                match crate::romdb::release_url(platform, &release) {
+                    Some(url) => self.update(Message::Open(url.into())),
+                    None => Task::none(),
+                }
+            }
             Message::CopyToDrive(path) => {
                 if self.config.mount_point().as_os_str().is_empty() {
                     return Task::done(Message::Notify(Notification::warning(

@@ -7,7 +7,10 @@ The app also refreshes them itself (`src/romdb/update.rs`): once a day it asks l
 for the DATs that changed since it last asked (by ETag), compacts them the same way as the script
 and keeps a list in `databases/no-intro/` or `databases/redump/` in its data folder when it is newer (by the DAT's
 version, a date) than the shipped one. When the app ships a newer list later, that one is used
-again. A test checks that both give the same files:
+again. With each DAT it downloads it also notes the line of every game in it (`<list>-lines.tsv`
+next to the list, `line <tab> name`), for the link to a release's entry on GitHub; the shipped
+lists have no lines, since every new game upstream would move them. A test checks that the
+script and the app give the same files:
 `UGBM_DAT_DIR=<folder with the eight DATs> cargo test -- --ignored compacts_the_real_dats`.
 
 ## no-intro/

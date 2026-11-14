@@ -34,3 +34,6 @@ UltimateGameBackupManager.app/
 UltimateGameBackupManager.AppDir/
 lucide-slint/
 mise.local.toml
+
+# Python bytecode (scripts/)
+__pycache__/
