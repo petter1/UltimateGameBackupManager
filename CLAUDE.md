@@ -42,7 +42,7 @@ every branch starts from the latest state:
 
 Handover between sessions; the session that changes the state updates this section. New sessions
 start from `main` and only see what is there, so the update goes to `main` in its own small
-`docs/` pull request (merged right away), not only in the feature branch. As of 2026-11-13 (evening):
+`docs/` pull request (merged right away), not only in the feature branch. As of 2026-11-14 (morning):
 
 - **No GitHub Actions minutes left** (2026-11-13 evening, the maintainer): CI doesn't run until
   the minutes come back. Until then the checks of "Where things are" run locally (on the
@@ -82,8 +82,18 @@ start from `main` and only see what is there, so the update goes to `main` in it
   GameTDB's Wii U list, kept only when its titles changed; retarget to `main` after #66), and on
   top of that the draft #69 (`claude/m2-artwork`: box art of identified ROMs from libretro's
   thumbnails, `src/library/artwork.rs`, kept as JPEG in `covers/libretro/`; item 10 in "Waiting
-  for the Mac"). Merge in this order: #66, #67, #69, each retargeted to `main` after the one
-  below. Next for M2: more artwork (Wii and GameCube discs in the library from GameTDB's covers,
+  for the Mac"), and on top of that the draft #71 (`claude/m2-library-cards`: the library looks
+  like the drive's list of games – one component for both, `src/ui/components/game_list.rs`,
+  cards or a table by the drive's `view_as`; an info window, `src/ui/modals/library_info.rs`;
+  sizes with one decimal, `src/util/size.rs`; the flat box art turned into a box seen at an
+  angle when the library loads, `src/library/box3d.rs`; seen on the maintainer's Linux computer).
+  Merge in this order: #66, #67, #69, #71, each retargeted to `main` after the one below.
+  **From `main`, independent of that stack**: the draft #74 (`claude/m2-unrar-helper`: RAR and
+  7z without 7-Zip, taken over from ps5upload – `crates/ugbm-unrar` is its own program with
+  UnRAR, `src/library/rar.rs` the app's end, 7z with `sevenz-rust2`, `third_party/` ps5upload's
+  patched crates, `LICENSES/UnRAR-exception.md`; the repository becomes a workspace, so the
+  checks get `--workspace`; same result as 7-Zip on the real collection; the release packaging
+  with the helper isn't built yet). Next for M2: more artwork (Wii and GameCube discs in the library from GameTDB's covers,
   title screens and logos, the game info showing them larger), the build refreshing the
   snapshot, the other platforms, `unar`/`lsar` when 7-Zip is missing. 3DS needs no GameTDB yet: CIAs have SMDH names, and cartridge
   dumps (`.3ds`) aren't read and aren't in the collection.
@@ -124,11 +134,21 @@ start from `main` and only see what is there, so the update goes to `main` in it
   plugged in there (`/run/media/<user>/gamestation`, `…/WIIGAMES`), a portable build's
   `library.json` and `library-checksums.json` show what the scan found, without clicking;
   `unshare -rn` starts it without a network.
+- **ps5upload** (2026-11-14, the maintainer): no fork of it. Instead (1) the PS5 becomes one more
+  device here, talking AVA1 (ps5upload's protocol, `phantomptr/ava1`) to ps5upload's payload;
+  (2) its ideas are taken over ("From ps5upload" in the roadmap: after the RAR helper, #74, next
+  resumable copies with verification); (3) the core is built without iced (M9), so the UI can
+  change later. Check ps5upload's code first and take over as much as possible, invent only
+  where needed, and credit every reuse (file header with ps5upload's copyright and the commit,
+  the README's credits, the changelog). A reference clone is on the maintainer's Linux computer
+  at `~/Repositories/ps5upload` (`git pull --recurse-submodules` updates it); cloud sessions
+  read it on GitHub.
 - **Next in the cloud** (no Mac needed): more artwork in M2 (see "Ninth pull request" in the
   roadmap), on top of #69 while #66, #67 and #69 are open. Anything on the 3DS side (vcinject Link 14) waits for the
   maintainer's decision.
 - **Branches**: GitHub deletes a pull request's branch when it is merged (seen 2026-11-13).
-  Left besides `main`: the branches of the open pull requests (#11, #13, #22, #49). A session on
+  Left besides `main`: the branches of the open pull requests (#11, #13, #22, #49, #66, #67,
+  #69, #71, #74). A session on
   the maintainer's Linux computer can delete a remote branch (`git push origin --delete`) when
   the maintainer asks for it. The local `feature/task-manager` on the Mac
   goes once #11 is merged. A clone in a cloud session is shallow (50 commits): `git fetch
@@ -143,6 +163,10 @@ start from `main` and only see what is there, so the update goes to `main` in it
   Documentation-only: as soon as CI is green. UI code isn't reviewed: if the UI works, it is
   good. Details: [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md#pull-requests).
 
+- **Reuse code, don't write it twice**: when something should look or work like an existing part
+  of the app (e.g. the library like the drive's list of games), extract the existing code into a
+  shared component and use it from both places, right in the first commit; parameterise only what
+  really differs (the maintainer, 2026-11-13; example: `src/ui/components/game_list.rs` in #71).
 - **Recommend a new session proactively** as soon as it makes sense, without being asked: when
   the conversation has grown long, when the next piece of work doesn't need what this session
   knows (a new milestone, an unrelated topic), or when a fresh start is cheaper than carrying the
@@ -164,6 +188,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
   2026-11-10, both `main`s and every branch): in the roadmap, marked "From vcinject" in M1, M2,
   M2b, M4, M5, M5b, M6 and M9. New in the plan since then: the first install of vcinject Link
   by QR code (M1).
+- What [ps5upload](https://github.com/phantomptr/ps5upload) does that this app could learn from
+  (compared 2026-11-14): in the roadmap, marked "From ps5upload" (M1a, M1a+, M1c, M2, M4, M9,
+  testing); whether to move to a fork of it is in "Open questions".
 - Branches, commits, pull requests: [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md). The repository
   is a fork of mq1/TinyWiiBackupManager: `gh` without `--repo petter1/UltimateGameBackupManager`
   may act on the upstream (a pull request landed there by mistake on 2026-11-13, closed). Checks before

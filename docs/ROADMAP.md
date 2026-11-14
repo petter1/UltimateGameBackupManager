@@ -60,6 +60,11 @@ each item is ticked off here (and gets its test log entry) when done.
    icon (look through GBA in the library, as cards and as a table); it looks right at 96
    pixels. Test log entry.
 
+**From ps5upload** (compared 2026-11-14): its tests have four layers, cheapest first, and the
+real-hardware one is one command (`npm run smoke:hardware`): it sends files of several sizes to a
+live PS5, checks them and cleans up. The same here (a script for the Mac: one 3DS, the drive)
+would turn several of the items above into one run with a log instead of clicking through.
+
 ## How the app is meant to work
 
 - **Library and devices are separate.** ROM sources are folders on the computer; devices are
@@ -128,6 +133,11 @@ by hand already. Only M6a needs M1b and M1d, so they come right before it.
    (item 4 in "Waiting for the Mac") is still due.
 5. **Unfinished tasks after a restart**: listed again, to resume or drop. Split off from 3,
    which was big enough; needs the jobs saved in the data folder.
+   **From ps5upload** (compared 2026-11-14, see "Open questions"): an upload that stops (dropped
+   connection, restart, a full drive) keeps its partial copy; *Resume* compares the sizes of
+   what is there with the source and sends only the rest; every file is verified at the end.
+   Here a cancelled or failed copy removes what it wrote; resuming copies to a drive and installs
+   (with vcinject Link 14's stream install) the same way would save hours on big games.
 
 Every longer action – import, copy to a drive, install on a console, convert, export, scrub,
 checksums, downloads, scans, later unpacking and injecting – becomes a **task** in one task manager.
@@ -178,6 +188,11 @@ errors", a search field, "Open log file". Works on the Mac (2026-10-31), the sea
 yet. Still open: the source (task, console, drive) with a link to it, grouping different errors
 of one task, log levels with debug lines, export.
 
+**From ps5upload** (compared 2026-11-14): *Bug Report* gathers the app's and the consoles' logs of
+a chosen time into one `.zip`, with addresses, serial numbers and keys removed, ready to post. Here
+it would be the Messages page's export, with the log file, the Link log and the paths of the ROM
+sources shortened.
+
 
 ### M1 · Install on the 3DS over Wi-Fi (M)
 
@@ -203,6 +218,10 @@ online 3DS at once**, not one console per click.
   those only in the cloud, naming the files it can't read, and copying nothing when the files
   together are bigger than the drive's free space. Games already waiting in the task list are
   skipped (#36). Still open: a selection, a whole source folder.
+- **From ps5upload** (compared 2026-11-14): a RAR, 7z or ZIP is unpacked on the way to the
+  console or drive, nothing extracted to the computer's disk first; a job that won't fit is
+  refused up front, counting what is already there (here: the drive's free space is checked, a
+  game partly there isn't counted).
 
 ### M2 · Game databases (M)
 
@@ -218,6 +237,11 @@ online 3DS at once**, not one console per click.
 - RAR is read and unpacked with an external **7-Zip** (`7z`, `7zz` on macOS; on every platform,
   handles RAR5), falling back to `unar`/`lsar` when only that is installed. The unrar library's
   license doesn't fit GPL, so it isn't linked.
+- **From ps5upload** (compared 2026-11-14): RAR without an installed 7-Zip. ps5upload keeps UnRAR
+  out of its GPL program in a separate small executable (`ps5upload-unrar`: only its own code,
+  under a GPL exception for UnRAR, and UnRAR), which the app starts and talks to over pipes.
+  The same here would make 7-Zip and `unar`/`lsar` unnecessary; the exception is needed only for
+  that helper's own code, not for TinyWiiBackupManager's. Replaces the `unar`/`lsar` fallback.
 - Real names for the ~700 entries that are only a title ID today.
 - From vcinject (compared 2026-11-10), for the ROMs of the older consoles (Game Boy to Mega Drive):
   - The library remembers each file's checksum (CRC32, SHA-1) and cartridge serial, so a renamed or
@@ -411,6 +435,10 @@ be fixed from a second copy, which the library knows about.
 ### M4 · One entry per game (M)
 
 - The library groups files and injects under their game.
+- **From ps5upload** (compared 2026-11-14): one grid with every game once – the copies in the
+  folders grouped with their updates and DLC, what each console has installed, the games on its
+  drives – and everything about a game on its page. Here: Wii U updates (`(v400)`) and DLC, 3DS
+  updates and DLC CIAs, under their game.
 - Game view: files, injects, where it is installed, "installable on" (GBA → 3DS, Wii U; GameCube
   → Wii with Nintendont, Wii U; Wii → Wii, Wii U; N64, DS, SNES … → Wii U).
 - Filter by target console.
@@ -735,6 +763,9 @@ its own.
   real NAS before the first release.
 - A **command line** on the same core, for scripts without the server: vcinject has one (`build`,
   `verify`, `library`, `doctor`, `3ds install` …), this app none.
+- **From ps5upload** (compared 2026-11-14), a working example of this milestone: a Rust engine
+  with an HTTP API, a web UI and the same UI as desktop app (Tauri) and as Android and iPhone app,
+  a Docker image with a compose file, several devices on one engine at once, 21 languages.
 
 ## Open questions
 
@@ -755,6 +786,16 @@ its own.
   results about them (2026-10-30). Their pages are linked, not copied; whether short step titles
   may be shown depends on the guides' licence, to check.
 - Wii mini (M1d, M6a): the app has to handle a USB stick in place of the SD card.
+- **PS5, and ps5upload** (asked 2026-11-14): whether to move to a fork of
+  [ps5upload](https://github.com/phantomptr/ps5upload) (Rust engine, Tauri/TypeScript UI, a PS5
+  payload; GPL-3.0-or-later, so its code can come here) and bring this app's and vcinject's
+  features there, so that one app also does the PS5. Against it for now: ps5upload is very
+  large (about 15 MB of Rust, 30 MB of TypeScript) and released almost daily (30 releases in the
+  week to 2026-11-13), so a fork falls behind at once or costs a merge every day; this app's UI
+  would be rewritten in TypeScript; TinyWiiBackupManager's code is GPL-3.0-only, so it can't go
+  upstream. The other way round looks cheaper: the PS5 as one more device here, talking AVA1
+  (ps5upload's protocol, its own repository `phantomptr/ava1`) to ps5upload's payload, and
+  ps5upload's ideas taken over (marked "From ps5upload" above).
 - vcinject Link (M1, M6): where its next version is developed – in vcinject's `companion/` as
   until now, or moved here and renamed for the protocol's `ugbm?` discovery – and whether vcinject
   itself goes on next to this app or only as the injector's sidecar.
