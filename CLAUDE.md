@@ -168,6 +168,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
   2026-11-10, both `main`s and every branch): in the roadmap, marked "From vcinject" in M1, M2,
   M2b, M4, M5, M5b, M6 and M9. New in the plan since then: the first install of vcinject Link
   by QR code (M1).
+- What [ps5upload](https://github.com/phantomptr/ps5upload) does that this app could learn from
+  (compared 2026-11-14): in the roadmap, marked "From ps5upload" (M1a, M1a+, M1c, M2, M4, M9,
+  testing); whether to move to a fork of it is in "Open questions".
 - Branches, commits, pull requests: [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md). The repository
   is a fork of mq1/TinyWiiBackupManager: `gh` without `--repo petter1/UltimateGameBackupManager`
   may act on the upstream (a pull request landed there by mistake on 2026-11-13, closed). Checks before
