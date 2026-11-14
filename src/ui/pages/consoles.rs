@@ -3,7 +3,8 @@
 
 use crate::{
     consoles::{
-        ConsoleEntry, Drive, InstalledTitle, TitleAction, TitlesState, VCINJECT_LINK_VERSION,
+        ConsoleEntry, Drive, InstalledTitle, QrInstallOf, TitleAction, TitlesState,
+        VCINJECT_LINK_VERSION,
     },
     link::protocol::{Console, n3ds},
     message::Message,
@@ -37,6 +38,14 @@ pub fn consoles(state: &AppState) -> Element<'_, Message> {
         text("My Consoles").size(18),
         space::horizontal(),
         consoles.searching.then(|| text("Searching…")),
+        tooltip(
+            my_button::<Message>()
+                .icon(Icon::QrCode)
+                .label("Install vcinject Link")
+                .on_press(Message::ShowQrInstall(QrInstallOf::Link)),
+            my_card("On a 3DS that doesn't run it yet: a QR code for FBI"),
+            tooltip::Position::Bottom
+        ),
         tooltip(
             search_button(consoles.searching),
             my_card("Search the network"),

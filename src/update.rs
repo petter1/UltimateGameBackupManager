@@ -171,7 +171,23 @@ impl AppState {
             }
             Message::CloseModal => {
                 self.current_modal = None;
+                // closing the QR code's window stops serving the CIA
+                self.qr_install = None;
                 Task::none()
+            }
+            Message::ShowQrInstall(of) => {
+                self.qr_install = None;
+                match crate::state::QrInstall::start(&of) {
+                    Ok(qr) => {
+                        self.qr_install = Some(qr);
+                        self.current_modal = Some(Modal::QrInstall);
+                        Task::none()
+                    }
+                    Err(e) => Task::done(Message::Notify(Notification::error(format!(
+                        "Can't serve {} in the network: {e}",
+                        of.name()
+                    )))),
+                }
             }
             Message::GotDiscInfo(new_meta) => {
                 if let Some(Modal::GameInfo((_, meta, _))) = &mut self.current_modal {

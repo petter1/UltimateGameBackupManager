@@ -11,6 +11,7 @@ pub mod delete_title;
 pub mod game_info;
 pub mod homebrew_app_info;
 pub mod osc_app_info;
+pub mod qr_install;
 
 #[derive(Debug, Clone)]
 pub enum Modal {
@@ -21,4 +22,6 @@ pub enum Modal {
     ConfirmScrub(Game),
     /// A title on a console, with its name
     DeleteTitle(SocketAddr, Title, String),
+    /// The QR code for FBI; what it serves is `AppState::qr_install`
+    QrInstall,
 }

@@ -13,6 +13,7 @@ use crate::{
         modals::{
             Modal, confirm_scub::confirm_scrub, delete_dir::delete_dir, delete_title::delete_title,
             game_info::game_info, homebrew_app_info::homebrew_app_info, osc_app_info::osc_app_info,
+            qr_install::qr_install,
         },
         pages::{
             Page, about::about, consoles::consoles, games::games, homebrew_apps::homebrew_apps,
@@ -65,6 +66,7 @@ pub fn view(state: &AppState) -> Element<'_, Message> {
                     Modal::DeleteTitle(addr, title, name) => {
                         delete_title(*addr, title, name, state)
                     }
+                    Modal::QrInstall => qr_install(state),
                 })
                 .center(Length::Fill)
                 .style(|theme: &Theme| container::Style {

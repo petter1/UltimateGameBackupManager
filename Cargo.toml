@@ -108,6 +108,7 @@ self_cell = "1.3" # free dependency: also dependency of cosmic-text
 crc32fast = "1"
 sha1 = { version = "0.11", default-features = false }
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
+qrcode = { version = "0.14", default-features = false } # QR codes for FBI's remote install
 
 [target.'cfg(any(target_os = "linux", target_arch = "aarch64"))'.dependencies]
 mundy = { version = "0.2", default-features = false, features = [

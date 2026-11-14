@@ -55,6 +55,14 @@ each item is ticked off here (and gets its test log entry) when done.
    first; gone from the list afterwards). With an older vcinject Link (e.g. 12), "Update" on the
    console's card installs version 13 and restarts it. Quit, switch the 3DS off, start again:
    the library still marks its titles as on "petter1". Test log entry.
+7. **M1, first install of vcinject Link by QR code** (branch `claude/m1-link-qr-install`, on top
+   of item 6): on a 3DS without vcinject Link (or with it deleted in FBI first),
+   "Install vcinject Link" in My Consoles shows a QR code; in FBI, "Remote Install" → "Scan QR
+   Code" installs it, the window shows the download's progress and "has downloaded". Started
+   from the HOME Menu, vcinject Link shows up in My Consoles. Also: the QR code button next to a CIA in the
+   library; closing the window halfway through a download (FBI must report the failed download,
+   nothing half-installed). If macOS asks whether the app may accept incoming connections, that
+   is needed. Test log entry.
 8. ~~**M2, game databases** (#48, #53 and #56 on top of them)~~: done 2026-11-12/13 on Linux
    with the real collection (gamestation, HFS+ mounted read-only; the maintainer agreed that this
    counts in place of the Mac), see the test log. #56 named 14 hacks after other games; fixed
@@ -197,11 +205,10 @@ sources shortened.
 
 ### M1 · Install on the 3DS over Wi-Fi (M)
 
-Not built yet, and vcinject has it (compared 2026-11-10, see "From vcinject" below): **the first
-install of vcinject Link** on a 3DS that doesn't run it yet – the app serves the CIA over HTTP and
-shows a QR code that FBI scans (vcinject's `serve.py`). Without it a new 3DS still needs vcinject
-once. The same way installs any CIA on a console without vcinject Link. And **installing on every
-online 3DS at once**, not one console per click.
+Compared with vcinject on 2026-11-10 (see "From vcinject" below): **the first install of vcinject
+Link** on a 3DS that doesn't run it yet – the app serves the CIA over HTTP and shows a QR code that
+FBI scans (vcinject's `serve.py`) – is built (see below); **installing on every online 3DS at
+once**, not one console per click, is still open.
 
 - "Install" on a CIA in the library: choose the 3DS; it runs as a task (M1a), with progress on the
   computer and on the 3DS. *Built, waiting for the Mac* (`claude/m1-3ds-install-and-consoles`):
@@ -217,6 +224,14 @@ online 3DS at once**, not one console per click.
   "Update" on the console's card installs the vcinject Link the app ships
   (`assets/vcinject-link.cia`, from vcinject) over the running one and restarts it, as vcinject
   does.
+- **First install of vcinject Link by QR code** (from vcinject's `serve.py`). *Built, waiting
+  for the Mac* (`claude/m1-link-qr-install`, on top of the branch above): "Install vcinject Link"
+  in My Consoles, and a QR code button next to every CIA in the library, serve the CIA over HTTP
+  in the local network (`src/link/serve.rs`, port 8080 or a free one, only while the window is
+  open) and show the QR code with the URL for FBI's "Remote Install → Scan QR Code", with the
+  download's progress. The same way installs any CIA on a console without vcinject Link. Not a
+  task: it waits for the console as long as the window is open.
+- Still open: installing on every online 3DS at once.
 - A waiting install keeps the address the console had when it was added. When the console gets
   another one meanwhile (a new DHCP lease), the task fails with "Could not connect"; installing
   the CIA again from the library uses the new address. Rare, and accepted (2026-11-09).
