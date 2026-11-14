@@ -15,6 +15,11 @@ cargo build --release
 
 The binary will be at `./target/release/UltimateGameBackupManager`
 
+RAR archives are read by a second small program, `ugbm-unrar`, which the app looks for next to
+itself (`cargo build --release --workspace` builds both; the app alone asks an installed 7-Zip).
+It is separate because UnRAR's license doesn't fit the app's: see
+[LICENSES/UnRAR-exception.md](LICENSES/UnRAR-exception.md).
+
 ## 📦 Distribution build
 
 This will be built with linker-plugin-lto for more in-depth optimization. \

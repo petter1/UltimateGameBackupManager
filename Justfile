@@ -16,8 +16,10 @@ default:
 [linux]
 _build-linux target arch:
     cargo build-dist-appimage --target {{target}}
+    cargo build-dist-unrar --target {{target}}
     mkdir -p out
     cp target/{{target}}/release/UltimateGameBackupManager out/UltimateGameBackupManager-linux-{{arch}}
+    cp target/{{target}}/release/ugbm-unrar out/ugbm-unrar-linux-{{arch}}
 
 [linux]
 build-linux-x86_64: (_build-linux "x86_64-unknown-linux-gnu" "x86_64")
@@ -30,6 +32,8 @@ build-linux-i686: (_build-linux "i686-unknown-linux-gnu" "i686")
 _package-linux $ARCH:
     cp -rP package/linux/AppDir UltimateGameBackupManager.AppDir
     install -Dm0755 out/UltimateGameBackupManager-linux-{{ARCH}} UltimateGameBackupManager.AppDir/usr/bin/UltimateGameBackupManager
+    # the RAR helper, next to the app (LICENSES/UnRAR-exception.md)
+    install -Dm0755 out/ugbm-unrar-linux-{{ARCH}} UltimateGameBackupManager.AppDir/usr/bin/ugbm-unrar
 
     mkdir -p dist && cd dist && appimagetool \
         --comp zstd --mksquashfs-opt -Xcompression-level --mksquashfs-opt 19 \
@@ -51,8 +55,10 @@ package-linux-i686: (_package-linux "i686")
 [windows]
 _build-windows target arch variant:
     cargo build-dist-windows-{{variant}} --target {{target}}
+    cargo build-dist-unrar --target {{target}}
     New-Item -ItemType Directory -Force -Path out | Out-Null
     Copy-Item -Path target\{{target}}\release\UltimateGameBackupManager.exe -Destination out\UltimateGameBackupManager-windows-{{arch}}.exe
+    Copy-Item -Path target\{{target}}\release\ugbm-unrar.exe -Destination out\ugbm-unrar-windows-{{arch}}.exe
 
 [windows]
 build-windows-x64: (_build-windows "x86_64-win7-windows-msvc" "x64" "modern")
@@ -61,11 +67,17 @@ build-windows-arm64: (_build-windows "aarch64-pc-windows-msvc" "arm64" "modern")
 [windows]
 build-windows-x86: (_build-windows "i686-win7-windows-msvc" "x86" "legacy")
 
-# just a copy
+# the .exe alone (RAR then needs 7-Zip), and a .zip with the RAR helper next to it
+# (LICENSES/UnRAR-exception.md)
 [windows]
 _package-windows arch:
     New-Item -ItemType Directory -Force -Path dist | Out-Null
     Copy-Item -Path "out\UltimateGameBackupManager-windows-{{arch}}.exe" -Destination "dist\UltimateGameBackupManager-{{version_name}}-windows-{{arch}}.exe"
+    New-Item -ItemType Directory -Force -Path zip | Out-Null
+    Copy-Item -Path "out\UltimateGameBackupManager-windows-{{arch}}.exe" -Destination "zip\UltimateGameBackupManager.exe"
+    Copy-Item -Path "out\ugbm-unrar-windows-{{arch}}.exe" -Destination "zip\ugbm-unrar.exe"
+    Copy-Item -Path "LICENSES" -Destination "zip\LICENSES" -Recurse
+    Compress-Archive -Force -Path "zip\*" -DestinationPath "dist\UltimateGameBackupManager-{{version_name}}-windows-{{arch}}.zip"
 
 [windows]
 package-windows-x64: (_package-windows "x64")
@@ -80,8 +92,10 @@ package-windows-x86: (_package-windows "x86")
 [macos]
 _build-macos target arch $MACOSX_DEPLOYMENT_TARGET:
     cargo build-dist-macos --target {{target}}
+    cargo build-dist-unrar --target {{target}}
     mkdir -p out
     cp target/{{target}}/release/UltimateGameBackupManager out/UltimateGameBackupManager-macos-{{arch}}
+    cp target/{{target}}/release/ugbm-unrar out/ugbm-unrar-macos-{{arch}}
 
 [macos]
 build-macos-x86_64: (_build-macos "x86_64-apple-darwin" "x86_64" "10.12")
@@ -99,6 +113,10 @@ package-macos-universal:
     # Build the fat binary
     lipo -create out/UltimateGameBackupManager-macos-x86_64 out/UltimateGameBackupManager-macos-arm64 -output UltimateGameBackupManager.app/Contents/MacOS/UltimateGameBackupManager
     chmod +x UltimateGameBackupManager.app/Contents/MacOS/UltimateGameBackupManager
+
+    # The RAR helper, next to the app's binary (LICENSES/UnRAR-exception.md)
+    lipo -create out/ugbm-unrar-macos-x86_64 out/ugbm-unrar-macos-arm64 -output UltimateGameBackupManager.app/Contents/MacOS/ugbm-unrar
+    chmod +x UltimateGameBackupManager.app/Contents/MacOS/ugbm-unrar
 
     # Sign the .app bundle
     codesign --force --deep -s - UltimateGameBackupManager.app

@@ -1,0 +1,25 @@
+# ugbm-unrar: the only program in Ultimate Game Backup Manager that contains UnRAR.
+#
+# Taken over from ps5upload's ps5upload-unrar (https://github.com/phantomptr/ps5upload), with
+# thanks to phantomptr. UnRAR's license is GPL-incompatible, and the app holds
+# TinyWiiBackupManager's GPL-3.0-only code, whose authors grant no exception for it, so UnRAR
+# must not be linked into the app. This crate builds a separate executable holding only
+# ps5upload's and this project's own code (GPL-3.0-or-later with the §7 exception in
+# LICENSES/UnRAR-exception.md) and UnRAR, which the app starts and talks to over pipes
+# (src/library/rar.rs is the other end). Keep it that way: no dependency on the app's crate.
+[package]
+name = "ugbm-unrar"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later WITH LicenseRef-UnRAR-exception"
+publish = false
+
+[[bin]]
+name = "ugbm-unrar"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# The vendored copy at third_party/unrar ([patch.crates-io] in the top Cargo.toml).
+unrar = "0.5"
