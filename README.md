@@ -106,6 +106,14 @@ Thanks as well to:
   [GameHacking.org](https://gamehacking.org) and [RiiConnect24](https://rc24.xyz)
 - [Rust](https://www.rust-lang.org), [Iced](https://iced.rs) and
   [Lucide](https://lucide.dev) (icons), which the app is built with
+- [phantomptr](https://github.com/phantomptr) and the
+  [ps5upload](https://github.com/phantomptr/ps5upload) contributors: the RAR helper
+  (`crates/ugbm-unrar`, the app's end of it in `src/library/rar.rs`), the UnRAR license exception
+  and the patched `unrar` and `sevenz-rust2` crates in `third_party/` are taken over from
+  ps5upload, and several ideas of the roadmap ("From ps5upload")
+- [Alexander Roshal](https://www.rarlab.com) for UnRAR, [Danyel Bayraktar](https://github.com/muja/unrar.rs)
+  for the `unrar` crate and [Nils Hasenbanck](https://github.com/hasenbanck/sevenz-rust2) for
+  `sevenz-rust2`
 - for the 3DS work coming over from vcinject: [3dbrew](https://www.3dbrew.org),
   [devkitPro](https://devkitpro.org), [Luma3DS](https://github.com/LumaTeam/Luma3DS),
   [Universal-Team](https://github.com/Universal-Team) and the rest of the

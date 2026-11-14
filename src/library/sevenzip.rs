@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Yanik Fuchs <yanik.fuchs@me.com>
 // SPDX-License-Identifier: GPL-3.0-only
 
-//! RAR and 7z archives, read with an external 7-Zip (`7zz`, `7z` or `7za`). The unrar library's
-//! license doesn't fit GPL, so nothing that reads RAR is linked into the app; without 7-Zip these
-//! archives are listed by their names only.
+//! RAR and 7z archives read with an external 7-Zip (`7zz`, `7z` or `7za`): what the app asks
+//! when it can't read one itself ([`super::archives`]).
 
+use super::archives::Entry;
 use std::{
     env,
     ffi::OsString,
@@ -13,22 +13,6 @@ use std::{
     process::{Command, Stdio},
     sync::OnceLock,
 };
-
-/// A file or folder in an archive
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Entry {
-    /// the path as 7-Zip names it, which is what it takes back to extract the file
-    pub path: String,
-    pub size: u64,
-    pub is_dir: bool,
-}
-
-impl Entry {
-    /// The path with `/` between folders on every system
-    pub fn slash_path(&self) -> String {
-        self.path.replace('\\', "/")
-    }
-}
 
 /// Program names of 7-Zip, best first: `7zz` is 7-Zip itself (Homebrew's `sevenzip`, the
 /// official Linux and macOS builds), `7z` p7zip or 7-Zip on Linux and Windows, `7za` p7zip's

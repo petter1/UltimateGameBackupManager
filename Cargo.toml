@@ -8,6 +8,18 @@ license = "GPL-3.0-only"
 repository = "https://github.com/petter1/UltimateGameBackupManager"
 description = "A game backup, homebrew and console manager for Nintendo consoles"
 
+# The RAR helper is its own program (crates/ugbm-unrar, LICENSES/UnRAR-exception.md): UnRAR
+# must never be linked into this app.
+[workspace]
+members = [".", "crates/ugbm-unrar"]
+
+# Copies taken over from ps5upload (https://github.com/phantomptr/ps5upload), each with one fix
+# (see their README.md): unrar's out-of-bounds read at every volume change, sevenz-rust2's sizes
+# on 32-bit targets
+[patch.crates-io]
+unrar = { path = "third_party/unrar" }
+sevenz-rust2 = { path = "third_party/sevenz-rust2" }
+
 [package.metadata.winresource]
 OriginalFilename = "UltimateGameBackupManager.exe"
 LegalCopyright = "Copyright © 2026 Manuel Quarneti, Yanik Fuchs. Licensed under GPL-3.0-only."
@@ -86,6 +98,9 @@ arrayvec = { version = "0.7", features = ["serde"] }
 zip = { version = "9", default-features = false, features = [
   "deflate-flate2-zlib-rs",
 ] }
+# 7z read in the app, as ps5upload does: only the pure-Rust LZMA/LZMA2 decoder, no C code;
+# patched to keep sizes u64 on 32-bit builds (third_party/sevenz-rust2, from ps5upload)
+sevenz-rust2 = { version = "0.23", default-features = false }
 strum = "0.28"
 strum_macros = "0.28"
 wiiload = { version = "0.9", features = ["async", "compression-async"] }
@@ -149,6 +164,10 @@ sevenz-rust2 = { version = "0.24", default-features = false, features = [
 zip = { version = "9", default-features = false, features = [
   "deflate-flate2-zlib-rs",
 ] }
+
+[dev-dependencies]
+# the tests pack their own 7z archives
+sevenz-rust2 = { version = "0.23", default-features = false, features = ["compress"] }
 
 # tiny and fast
 [profile.release]

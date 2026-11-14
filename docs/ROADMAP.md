@@ -225,14 +225,10 @@ online 3DS at once**, not one console per click.
   - At run time the app checks for newer databases and falls back to the shipped ones.
 - Identify every library entry: by checksum (for RAR releases from the RAR headers), by title or
   game ID, by name as a last resort.
-- RAR is read and unpacked with an external **7-Zip** (`7z`, `7zz` on macOS; on every platform,
-  handles RAR5), falling back to `unar`/`lsar` when only that is installed. The unrar library's
-  license doesn't fit GPL, so it isn't linked.
-- **From ps5upload** (compared 2026-11-14): RAR without an installed 7-Zip. ps5upload keeps UnRAR
-  out of its GPL program in a separate small executable (`ps5upload-unrar`: only its own code,
-  under a GPL exception for UnRAR, and UnRAR), which the app starts and talks to over pipes.
-  The same here would make 7-Zip and `unar`/`lsar` unnecessary; the exception is needed only for
-  that helper's own code, not for TinyWiiBackupManager's. Replaces the `unar`/`lsar` fallback.
+- RAR is read by the app's own helper program and 7z by the app itself, both **from ps5upload**
+  (see "RAR and 7z without 7-Zip" below); an external **7-Zip** (`7z`, `7zz` on macOS) is only
+  asked when they can't read an archive. The unrar library's license doesn't fit GPL, so it is
+  never linked into the app, only into the helper.
 - Real names for the ~700 entries that are only a title ID today.
 - From vcinject (compared 2026-11-10), for the ROMs of the older consoles (Game Boy to Mega Drive):
   - The library remembers each file's checksum (CRC32, SHA-1) and cartridge serial, so a renamed or
@@ -305,8 +301,27 @@ Loadiine RAR with `meta/meta.xml` per title. Archives named after a title ID (th
 injects) aren't opened for a ROM; what an archive holds is kept in `library-archives.json` by
 path, size and time of the last change. On the real collection: 42 of the 43 bare title IDs
 named, the one left an NUS inject straight in `NDS/`; the two `.7z` GBA hacks read as ROMs; 7
-archives opened. Still open: `unar`/`lsar` when 7-Zip is missing, unpacking a RAR release for
-copying or installing, checksums from the RAR headers for discs in RARs (none in the collection).
+archives opened. Still open: unpacking a RAR release for copying or installing, checksums from
+the RAR headers for discs in RARs (none in the collection).
+
+**RAR and 7z without 7-Zip** (2026-11-14, branch `claude/m2-unrar-helper`, from `main`; replaces
+the `unar`/`lsar` fallback): taken over from [ps5upload](https://github.com/phantomptr/ps5upload)
+(at 583cb971), changed as little as possible. RAR: `crates/ugbm-unrar` is ps5upload's
+`ps5upload-unrar`, a separate program holding only ps5upload's and this project's code and UnRAR
+(`LICENSES/UnRAR-exception.md`, `LICENSES/UnRAR-license.txt`), which the app starts and talks to
+over pipes; `src/library/rar.rs` is ps5upload's `rar_helper.rs` with `entries` and `read` added.
+The app looks for it in `UGBM_UNRAR_BIN`, then next to its own executable. 7z:
+`src/library/sevenz.rs` reads it with `sevenz-rust2` (LZMA/LZMA2 only), as ps5upload does.
+`third_party/unrar` and `third_party/sevenz-rust2` are ps5upload's copies with its fixes (an
+out-of-bounds read at every RAR volume change; sizes over 4 GiB on 32-bit builds).
+`src/library/archives.rs` asks them first and the 7-Zip on the computer when they fail. The
+repository is a workspace now: checks run with `--workspace`, and CI fails when the app's
+dependencies hold `unrar`. Releases ship the helper next to the app (AppImage `usr/bin`, the
+macOS bundle's `Contents/MacOS`, a `.zip` on Windows) – **not built yet**: no Actions minutes,
+and the release build needs `rust-src`; to try with the next release build. On the real
+collection without 7-Zip in `PATH`: the same result as with 7-Zip for all 93 archives (5 Loadiine
+RARs with 42 names, two multi-part RARs, both `.7z` GBA hacks with the same SHA-1). Still to
+come from ps5upload's RAR code: passwords, unpacking for copying or installing.
 
 **Sixth pull request** (2026-11-13, branch `claude/m2-gametdb-wiiu`): GameTDB's list of Wii U
 titles (`assets/databases/gametdb/wiiu.txt`, 83 KB, kept as GameTDB has it; refreshed by

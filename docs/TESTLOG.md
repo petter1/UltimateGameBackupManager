@@ -56,6 +56,19 @@ console, a real drive or a real collection can show.
 | **Result** | ✅ 109 of 110 named: "WUP-P-AF6P" → "Fast & Furious: Showdown", "WUP-P-AUME v400" → "Minecraft: Wii U Edition (v400)", "WUP-N-RMCP 00050002524D4350" → "Mario Kart Wii (Europe, Australia) (En,Fr,De,Es,It)"; no other name changed. Left: "WUP-P-HITS", not in GameTDB. |
 | **Follow-up** | The app refreshing GameTDB's list; 3DS cartridge dumps |
 
+### 2026-11-14 · gamestation · RAR and 7z without 7-Zip
+
+| | |
+| --- | --- |
+| **Device** | gamestation, USB HDD, HFS+, mounted read-only on Linux |
+| **What** | RAR through `ugbm-unrar`, 7z in the app, both taken over from ps5upload (`claude/m2-unrar-helper`) |
+| **Who** | Claude, on the maintainer's Linux computer |
+| **When** | 2026-11-14, Arch Linux, debug build, `ugbm-unrar` next to the app |
+| **How** | Portable build with `gamestation/Games` as the ROM source, `library-archives.json` removed, started with `PATH=/nonexistent` (no 7-Zip to find) and without a network; `library.json` and `library-archives.json` compared with those of the scan with 7-Zip of 2026-11-13 |
+| **Why** | The app should read RAR and 7z without anything installed |
+| **Result** | ✅ Identical: all 93 archives the same (the 7 opened ones with the same ROM and titles, among them the 5 Loadiine RARs' 42 names and two `.part1.rar`; both `.7z` GBA hacks with the same SHA-1). 7-Zip was never asked. |
+| **Follow-up** | The release packages with the helper (AppImage, macOS bundle, Windows zip) at the next release build; the same on the Mac |
+
 ### 2026-11-13 · gamestation · RAR and 7z through 7-Zip
 
 | | |

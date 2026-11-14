@@ -9,6 +9,9 @@ use crate::{
 };
 use iced::widget::image;
 use smol::{Timer, future::FutureExt};
+mod archives;
+mod rar;
+mod sevenz;
 mod sevenzip;
 
 use std::{
@@ -681,8 +684,8 @@ fn peek(path: &Path, known: &Known) -> Option<Contents> {
         return Some(peeked.contents.clone());
     }
 
-    let entries = sevenzip::list(path)?;
-    let files: Vec<&sevenzip::Entry> = entries.iter().filter(|e| !e.is_dir).collect();
+    let entries = archives::list(path)?;
+    let files: Vec<&archives::Entry> = entries.iter().filter(|e| !e.is_dir).collect();
 
     let mut roms = files.iter().filter(|e| {
         let name = e.slash_path();
@@ -707,7 +710,7 @@ fn peek(path: &Path, known: &Known) -> Option<Contents> {
         .take(MAX_TITLES_IN_ARCHIVE)
         .map(|e| e.path.as_str())
         .collect();
-    let titles = sevenzip::read(path, &metas, 4 * 1024 * 1024)
+    let titles = archives::read(path, &metas, 4 * 1024 * 1024)
         .map(|data| titles_in_meta_xml(&data))
         .unwrap_or_default();
 
@@ -824,7 +827,7 @@ fn read_rom(path: &Path, member: Option<&str>) -> Option<Vec<u8>> {
             File::open(path).ok()?.read_to_end(&mut data).ok()?;
         }
         Some(member) if !is_zip(path) => {
-            data = sevenzip::read(path, &[member], MAX_ROM_SIZE)?;
+            data = archives::read(path, &[member], MAX_ROM_SIZE)?;
         }
         Some(member) => {
             let mut archive = zip::ZipArchive::new(BufReader::new(File::open(path).ok()?)).ok()?;

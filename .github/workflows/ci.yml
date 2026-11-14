@@ -58,7 +58,17 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Clippy
-        run: cargo clippy --all-targets --locked -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
       - name: Tests
-        run: cargo test --locked
+        run: cargo test --workspace --locked
+
+      # UnRAR's license doesn't fit the app's GPL code: only crates/ugbm-unrar may hold it
+      # (LICENSES/UnRAR-exception.md)
+      - name: The app doesn't link UnRAR
+        shell: bash
+        run: |
+          if cargo tree --locked -p UltimateGameBackupManager -e normal,build | grep -i unrar; then
+            echo "UnRAR must stay out of the app: only crates/ugbm-unrar may depend on it" >&2
+            exit 1
+          fi

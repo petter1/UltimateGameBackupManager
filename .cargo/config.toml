@@ -8,4 +8,6 @@ AWS_LC_SYS_CFLAGS = "-fno-lto"
 build-dist-appimage = "--config .cargo/dist.toml build -Z build-std=std,panic_abort --release --no-default-features --features dist-appimage"
 build-dist-windows-modern = "--config .cargo/dist.toml build -Z build-std=std,panic_abort --release --no-default-features --features dist-windows-modern"
 build-dist-windows-legacy = "--config .cargo/dist.toml build -Z build-std=std,panic_abort --release --no-default-features --features dist-windows-legacy"
+# the RAR helper (crates/ugbm-unrar), its own program next to the app
+build-dist-unrar = "--config .cargo/dist.toml build -Z build-std=std,panic_abort --release -p ugbm-unrar"
 build-dist-macos = "--config .cargo/dist.toml build -Z build-std=std,panic_abort --release --no-default-features --features dist-macos"
