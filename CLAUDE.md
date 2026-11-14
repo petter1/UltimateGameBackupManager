@@ -134,6 +134,9 @@ start from `main` and only see what is there, so the update goes to `main` in it
   plugged in there (`/run/media/<user>/gamestation`, `…/WIIGAMES`), a portable build's
   `library.json` and `library-checksums.json` show what the scan found, without clicking;
   `unshare -rn` starts it without a network.
+- **Nintendo first** (2026-11-14, the maintainer): there is no PS5 to test with, so M10 (the PS5,
+  planned in the roadmap) waits; from ps5upload only what the Nintendo side needs is taken for
+  now.
 - **ps5upload** (2026-11-14, the maintainer): no fork of it. Instead (1) the PS5 becomes one more
   device here, talking AVA1 (ps5upload's protocol, `phantomptr/ava1`) to ps5upload's payload;
   (2) its ideas are taken over ("From ps5upload" in the roadmap: after the RAR helper, #74, next
@@ -167,6 +170,13 @@ start from `main` and only see what is there, so the update goes to `main` in it
   of the app (e.g. the library like the drive's list of games), extract the existing code into a
   shared component and use it from both places, right in the first commit; parameterise only what
   really differs (the maintainer, 2026-11-13; example: `src/ui/components/game_list.rs` in #71).
+- **Code taken over from ps5upload is kept up to date**: the maintainer wants its changes
+  checked from time to time and brought over. Before working on such code, and at a handover
+  when it wasn't looked at for a while: update the reference (`git -C ~/Repositories/ps5upload
+  pull --recurse-submodules`, or read it on GitHub), `git log <noted commit>..HEAD -- <the
+  files taken over>` (`engine/crates/ps5upload-unrar`, `engine/crates/ps5upload-core/src/
+  rar_helper.rs`, `third_party/unrar`, `third_party/sevenz-rust2`, `LICENSES/UnRAR-*`), bring
+  fixes over with credits and note the new commit in the headers and `third_party/README.md`.
 - **Recommend a new session proactively** as soon as it makes sense, without being asked: when
   the conversation has grown long, when the next piece of work doesn't need what this session
   knows (a new milestone, an unrelated topic), or when a fresh start is cheaper than carrying the

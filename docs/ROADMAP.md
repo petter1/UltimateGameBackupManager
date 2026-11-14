@@ -702,7 +702,7 @@ its own.
   with an HTTP API, a web UI and the same UI as desktop app (Tauri) and as Android and iPhone app,
   a Docker image with a compose file, several devices on one engine at once, 21 languages.
 
-### M10 · PlayStation 5 through ps5upload's helper (L)
+### M10 · PlayStation 5 through ps5upload's helper (L) – later, Nintendo first
 
 The PS5 as one more device (the maintainer, 2026-11-14), not a fork of ps5upload. Looked at on
 2026-11-14 in ps5upload at 583cb971 and AVA1 1.0.10; nothing built yet.
@@ -739,8 +739,21 @@ The PS5 as one more device (the maintainer, 2026-11-14), not a fork of ps5upload
 5. Later: install packages, saves, the library grouping PS5 games with the rest (M4).
 
 **Open**
-- Who tests: needs a jailbroken PS5 with an ELF loader. Without one only the pairing and the
-  transfers can be tried, against AVA1's own example node on the computer.
+- **Nobody here has a PS5** (the maintainer, 2026-11-14), so this milestone waits and the
+  Nintendo consoles come first. How it is tested when its time comes:
+  - Steps 1 and 3 (pairing, sending, resuming after a cut connection, verification) against
+    AVA1's own node on the computer (the Rust node of the `ava1` crate, or its C example node
+    `examples/c/node.c`), in the tests and by hand; AVA1's `ava1-chaos` proxy cuts and damages
+    the connection on purpose.
+  - Steps 2 and 4 (ps5upload's methods, starting the helper through the ELF loader) need a real
+    jailbroken PS5: built against ps5upload's schema and its test vectors, shipped marked
+    "untested on a console", and tried by someone who has one (a test log entry then); listed
+    under "Waiting for the Mac" as needing hardware the maintainer doesn't have.
+  - Until then only what the Nintendo side needs is taken from ps5upload (the "From ps5upload"
+    items of M1a, M1a+, M1c and M2).
+- **Keeping up with ps5upload**: what is taken over is checked against ps5upload from time to
+  time and its fixes are brought over (the commit it was taken at is noted in the file's header
+  and in `third_party/README.md`).
 - `ava1` needs `ring`; whether the Windows XP build (`i686-win7`, "legacy") can have it, or the
   PS5 is left out there.
 - ps5upload releases almost daily: how often the pinned helper is moved.
